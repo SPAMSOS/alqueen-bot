@@ -9,7 +9,7 @@ class Database {
         try {
             await mongoose.connect(uri, {
                 maxPoolSize: 10,
-                serverSelectionTimeoutMS: 5000,
+                serverSelectionTimeoutMS: 10000,
                 socketTimeoutMS: 45000,
             });
 
@@ -31,7 +31,8 @@ class Database {
             return this.connection;
         } catch (error) {
             console.error('❌ Failed to connect to MongoDB:', error.message);
-            process.exit(1);
+            // Don't exit, let web server try
+            console.log('⚠️  Continuing without database...');
         }
     }
 

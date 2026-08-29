@@ -91,7 +91,6 @@ ticketSchema.pre('save', function(next) {
 // Indexes
 ticketSchema.index({ guildId: 1, status: 1 });
 ticketSchema.index({ userId: 1 });
-ticketSchema.index({ ticketId: 1 });
 ticketSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Ticket', ticketSchema);
