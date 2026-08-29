@@ -5,10 +5,10 @@ const User = require('../../database/models/User');
 // Login page redirect
 router.get('/login', (req, res) => {
     const clientId = process.env.CLIENT_ID;
-    const redirectUri = `${process.env.DASHBOARD_URL || 'http://localhost:3000'}/auth/callback`;
-    const scope = 'identify guilds';
+    const redirectUri = `${process.env.DASHBOARD_URL || 'https://alqueen-bot.onrender.com'}/auth/callback`;
+    const scope = 'identify guilds email';
 
-    // Validate client_id is numeric (snowflake)
+    // Validate client_id
     if (!clientId || !/^\d{17,20}$/.test(clientId)) {
         console.error('Invalid CLIENT_ID:', clientId);
         return res.redirect('/?error=invalid_client_id');
@@ -34,12 +34,19 @@ router.get('/callback', async (req, res) => {
 
     try {
         const clientId = process.env.CLIENT_ID;
-        const clientSecret = process.env.DISCORD_TOKEN_SECRET || process.env.CLIENT_SECRET;
+        const clientSecret = process.env.CLIENT_SECRET;
 
         if (!clientId || !/^\d{17,20}$/.test(clientId)) {
             return res.redirect('/?error=invalid_client_id');
         }
 
+        if (!clientSecret) {
+            return res.redirect('/?error=missing_client_secret');
+        }
+
+        const redirectUri = `${process.env.DASHBOARD_URL || 'https://alqueen-bot.onrender.com'}/auth/callback`;
+
+        // Exchange code for token
         const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
             method: 'POST',
             headers: {
@@ -50,7 +57,7 @@ router.get('/callback', async (req, res) => {
                 client_secret: clientSecret,
                 grant_type: 'authorization_code',
                 code: code.toString(),
-                redirect_uri: `${process.env.DASHBOARD_URL || 'http://localhost:3000'}/auth/callback`
+                redirect_uri: redirectUri
             })
         });
 
@@ -61,6 +68,7 @@ router.get('/callback', async (req, res) => {
             return res.redirect(`/?error=${tokens.error}`);
         }
 
+        // Get user info
         const userResponse = await fetch('https://discord.com/api/users/@me', {
             headers: {
                 Authorization: `Bearer ${tokens.access_token}`
@@ -69,27 +77,56 @@ router.get('/callback', async (req, res) => {
 
         const userData = await userResponse.json();
 
-        if (userData.error) {
+        if (userData.error || !userData.id) {
             console.error('User fetch error:', userData);
             return res.redirect('/?error=user_fetch_failed');
         }
 
+        // Get user's guilds
+        const guildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
+            headers: {
+                Authorization: `Bearer ${tokens.access_token}`
+            }
+        });
+
+        const userGuilds = await guildsResponse.json();
+
         // Save or update user
         let user = await User.findOne({ userId: userData.id });
+        const isNewUser = !user;
+
         if (!user) {
             user = new User({
                 userId: userData.id,
                 tag: userData.username + '#' + userData.discriminator,
                 username: userData.username,
                 discriminator: userData.discriminator,
-                avatar: userData.avatar
+                avatar: userData.avatar,
+                email: userData.email
             });
         } else {
             user.tag = userData.username + '#' + userData.discriminator;
             user.avatar = userData.avatar;
             user.username = userData.username;
+            user.discriminator = userData.discriminator;
+            if (userData.email) user.email = userData.email;
             user.lastSeen = new Date();
         }
+
+        // Update user's guilds
+        if (Array.isArray(userGuilds)) {
+            user.guilds = userGuilds
+                .filter(g => g.owner || (g.permissions & 0x20) === 0x20) // Owner or Manage Guild
+                .map(g => ({
+                    guildId: g.id,
+                    name: g.name,
+                    icon: g.icon,
+                    owner: g.owner,
+                    permissions: g.permissions,
+                    joinedAt: new Date()
+                }));
+        }
+
         await user.save();
 
         // Set session
@@ -97,28 +134,60 @@ router.get('/callback', async (req, res) => {
             id: userData.id,
             tag: userData.username + '#' + userData.discriminator,
             username: userData.username,
-            avatar: userData.avatar
+            global_name: userData.global_name,
+            avatar: userData.avatar,
+            email: userData.email,
+            discriminator: userData.discriminator,
+            mfa_enabled: userData.mfa_enabled,
+            verified: userData.verified,
+            guilds: user.guilds,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            loginAt: new Date()
         };
 
+        console.log(`✅ User logged in: ${userData.username}#${userData.discriminator} (${userData.id})`);
         res.redirect('/dashboard');
     } catch (error) {
-        console.error('OAuth error:', error);
+        console.error('OAuth callback error:', error);
         res.redirect('/?error=auth_failed');
     }
+});
+
+// Get current user (with REAL Discord data)
+router.get('/me', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    const user = req.session.user;
+    const avatarUrl = user.avatar
+        ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${user.avatar.startsWith('a_') ? 'gif' : 'png'}?size=256`
+        : `https://cdn.discordapp.com/embed/avatars/${(parseInt(user.discriminator || '0') % 5)}.png`;
+
+    res.json({
+        success: true,
+        data: {
+            id: user.id,
+            tag: user.tag,
+            username: user.username,
+            global_name: user.global_name,
+            avatar: user.avatar,
+            avatarUrl: avatarUrl,
+            email: user.email,
+            discriminator: user.discriminator,
+            mfa_enabled: user.mfa_enabled,
+            verified: user.verified,
+            guilds: user.guilds || [],
+            loginAt: user.loginAt
+        }
+    });
 });
 
 // Logout
 router.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/');
-});
-
-// Get current user
-router.get('/me', (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ success: false, error: 'Not authenticated' });
-    }
-    res.json({ success: true, data: req.session.user });
 });
 
 module.exports = router;

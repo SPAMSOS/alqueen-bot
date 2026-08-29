@@ -17,7 +17,8 @@ router.get('/stats', async (req, res) => {
         const botInfo = client?.user ? {
             username: client.user.username,
             id: client.user.id,
-            avatar: client.user.displayAvatarURL()
+            avatar: client.user.displayAvatarURL(),
+            avatarUrl: client.user.displayAvatarURL({ size: 256, dynamic: true })
         } : {};
 
         res.json({
@@ -31,7 +32,7 @@ router.get('/stats', async (req, res) => {
                 },
                 guilds: {
                     total: guilds.length,
-                    active: guilds.filter(g => g.stats.openTickets > 0).length
+                    active: guilds.filter(g => g.stats && g.stats.openTickets > 0).length
                 }
             }
         });
@@ -40,8 +41,51 @@ router.get('/stats', async (req, res) => {
     }
 });
 
-// Get all guilds
+// Get user's guilds (with bot)
 router.get('/guilds', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const client = req.app.locals.client;
+        const userGuilds = req.session.user.guilds || [];
+
+        // Get bot's actual guilds
+        const botGuildIds = client ? client.guilds.cache.map(g => g.id) : [];
+
+        // Filter user guilds to only show ones with bot
+        const sharedGuilds = userGuilds.filter(g => botGuildIds.includes(g.guildId));
+
+        // Get full guild info from bot
+        const guildsWithInfo = await Promise.all(sharedGuilds.map(async (ug) => {
+            const guildData = await Guild.findOne({ guildId: ug.guildId });
+            const botGuild = client?.guilds?.cache?.get(ug.guildId);
+
+            return {
+                guildId: ug.guildId,
+                name: ug.name || (botGuild ? botGuild.name : 'Unknown'),
+                icon: ug.icon || (botGuild ? botGuild.icon : null),
+                iconUrl: ug.icon
+                    ? `https://cdn.discordapp.com/icons/${ug.guildId}/${ug.icon}.${ug.icon.startsWith('a_') ? 'gif' : 'png'}?size=128`
+                    : (botGuild ? botGuild.iconURL({ size: 128, dynamic: true }) : null),
+                memberCount: botGuild ? botGuild.memberCount : 0,
+                owner: ug.owner,
+                permissions: ug.permissions,
+                settings: guildData?.settings || {},
+                stats: guildData?.stats || { totalTickets: 0, openTickets: 0, closedTickets: 0 }
+            };
+        }));
+
+        res.json({ success: true, data: guildsWithInfo });
+    } catch (error) {
+        console.error('Guilds error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get all guilds in DB (admin only)
+router.get('/guilds/all', async (req, res) => {
     try {
         if (!req.session.user) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -62,7 +106,17 @@ router.get('/guilds/:guildId', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
 
-        res.json({ success: true, data: guild });
+        const client = req.app.locals.client;
+        const botGuild = client?.guilds?.cache?.get(req.params.guildId);
+
+        res.json({
+            success: true,
+            data: {
+                ...guild.toObject(),
+                memberCount: botGuild ? botGuild.memberCount : 0,
+                online: botGuild ? botGuild.presences?.cache?.size || 0 : 0
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -73,6 +127,35 @@ router.get('/guilds/:guildId/tickets', async (req, res) => {
     try {
         const { status, limit = 50, page = 1 } = req.query;
         const filter = { guildId: req.params.guildId };
+
+        if (status) filter.status = status;
+
+        const tickets = await Ticket.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
+            .skip((parseInt(page) - 1) * parseInt(limit));
+
+        const total = await Ticket.countDocuments(filter);
+
+        res.json({
+            success: true,
+            data: tickets,
+            pagination: {
+                total,
+                page: parseInt(page),
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get all tickets (recent)
+router.get('/tickets', async (req, res) => {
+    try {
+        const { status, limit = 50, page = 1 } = req.query;
+        const filter = {};
 
         if (status) filter.status = status;
 
@@ -181,7 +264,7 @@ router.put('/guilds/:guildId/settings', async (req, res) => {
     }
 });
 
-// Close ticket
+// Close ticket from dashboard
 router.post('/tickets/:ticketId/close', async (req, res) => {
     try {
         const ticket = await Ticket.findOne({ ticketId: req.params.ticketId });
@@ -198,6 +281,15 @@ router.post('/tickets/:ticketId/close', async (req, res) => {
             at: new Date()
         };
         await ticket.save();
+
+        // Notify via socket
+        const io = req.app.locals.io;
+        if (io) {
+            io.to('all-guilds').emit('ticketClosed', {
+                ticketId: ticket.ticketId,
+                reason: ticket.closedBy.reason
+            });
+        }
 
         // Try to delete Discord channel
         if (req.app.locals.client) {
