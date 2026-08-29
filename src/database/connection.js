@@ -16,12 +16,20 @@ class Database {
                 return mongoose.connection;
             }
 
-            await mongoose.connect(uri, {
-                maxPoolSize: 10,
-                serverSelectionTimeoutMS: 15000,
-                socketTimeoutMS: 45000,
-                connectTimeoutMS: 15000,
+            // Ensure URI has database name
+            let cleanUri = uri;
+            if (cleanUri.endsWith('/') || !cleanUri.match(/\.net\/[^?]+/)) {
+                cleanUri = cleanUri.replace(/\.net\/?(\?.*)?$/, '.net/alqueen$1');
+            }
+
+            console.log('🔗 Connecting to MongoDB...');
+            await mongoose.connect(cleanUri, {
+                maxPoolSize: 5,
+                serverSelectionTimeoutMS: 30000,
+                socketTimeoutMS: 60000,
+                connectTimeoutMS: 30000,
                 waitQueueTimeoutMS: 30000,
+                authSource: 'admin'
             });
 
             this.connection = mongoose.connection;
