@@ -8,6 +8,12 @@ router.get('/login', (req, res) => {
     const redirectUri = `${process.env.DASHBOARD_URL || 'http://localhost:3000'}/auth/callback`;
     const scope = 'identify guilds';
 
+    // Validate client_id is numeric (snowflake)
+    if (!clientId || !/^\d{17,20}$/.test(clientId)) {
+        console.error('Invalid CLIENT_ID:', clientId);
+        return res.redirect('/?error=invalid_client_id');
+    }
+
     const url = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`;
 
     res.redirect(url);
@@ -15,21 +21,33 @@ router.get('/login', (req, res) => {
 
 // OAuth callback
 router.get('/callback', async (req, res) => {
-    const { code } = req.query;
+    const { code, error } = req.query;
+
+    if (error) {
+        console.error('OAuth error:', error);
+        return res.redirect(`/?error=${error}`);
+    }
 
     if (!code) {
         return res.redirect('/?error=no_code');
     }
 
     try {
+        const clientId = process.env.CLIENT_ID;
+        const clientSecret = process.env.DISCORD_TOKEN_SECRET || process.env.CLIENT_SECRET;
+
+        if (!clientId || !/^\d{17,20}$/.test(clientId)) {
+            return res.redirect('/?error=invalid_client_id');
+        }
+
         const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
             body: new URLSearchParams({
-                client_id: process.env.CLIENT_ID,
-                client_secret: process.env.DISCORD_TOKEN_SECRET || process.env.DISCORD_TOKEN,
+                client_id: clientId,
+                client_secret: clientSecret,
                 grant_type: 'authorization_code',
                 code: code.toString(),
                 redirect_uri: `${process.env.DASHBOARD_URL || 'http://localhost:3000'}/auth/callback`
@@ -39,6 +57,7 @@ router.get('/callback', async (req, res) => {
         const tokens = await tokenResponse.json();
 
         if (tokens.error) {
+            console.error('Token error:', tokens);
             return res.redirect(`/?error=${tokens.error}`);
         }
 
@@ -49,6 +68,11 @@ router.get('/callback', async (req, res) => {
         });
 
         const userData = await userResponse.json();
+
+        if (userData.error) {
+            console.error('User fetch error:', userData);
+            return res.redirect('/?error=user_fetch_failed');
+        }
 
         // Save or update user
         let user = await User.findOne({ userId: userData.id });
@@ -63,6 +87,7 @@ router.get('/callback', async (req, res) => {
         } else {
             user.tag = userData.username + '#' + userData.discriminator;
             user.avatar = userData.avatar;
+            user.username = userData.username;
             user.lastSeen = new Date();
         }
         await user.save();

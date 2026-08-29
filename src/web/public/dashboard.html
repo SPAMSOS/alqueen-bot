@@ -6,29 +6,58 @@
     <title>لوحة التحكم - ALQUEEN</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <link rel="stylesheet" href="/css/style.css">
     <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 0;
-            background: #0a0a0f;
-            color: #fff;
-            font-family: 'Cairo', sans-serif;
-            min-height: 100vh;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #14141d;
+            --bg-card: #1e1e2a;
+            --bg-elevated: #25253a;
+            --text-primary: #ffffff;
+            --text-secondary: #b4b4c8;
+            --text-muted: #6c6c84;
+            --accent: #5865F2;
+            --accent-2: #7c3aed;
+            --accent-3: #ec4899;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
         }
 
-        .dashboard-container {
-            display: grid;
-            grid-template-columns: 280px 1fr;
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(88, 101, 242, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
         }
 
         /* Sidebar */
         .sidebar {
-            background: linear-gradient(180deg, #14141d 0%, #1e1e2a 100%);
-            border-left: 1px solid rgba(255,255,255,0.08);
-            padding: 24px 16px;
+            background: rgba(20, 20, 29, 0.7);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px 12px;
             position: sticky;
             top: 0;
             height: 100vh;
@@ -38,94 +67,104 @@
         .logo {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 0 12px 24px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            margin-bottom: 24px;
+            gap: 10px;
+            padding: 8px 12px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 16px;
         }
 
         .logo-icon {
-            font-size: 32px;
-            animation: pulse 2s infinite;
+            font-size: 28px;
+            animation: float 3s ease-in-out infinite;
         }
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
         }
 
         .logo-text {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 900;
-            background: linear-gradient(135deg, #5865F2, #ec4899);
+            background: linear-gradient(135deg, var(--accent), var(--accent-3));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .nav-section {
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
 
         .nav-title {
-            font-size: 11px;
-            color: #6c6c84;
+            font-size: 10px;
+            color: var(--text-muted);
             text-transform: uppercase;
-            padding: 8px 12px;
+            padding: 6px 12px;
             font-weight: 700;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
         }
 
         .nav-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
+            gap: 10px;
+            padding: 10px 14px;
             border-radius: 10px;
-            color: #b4b4c8;
+            color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 4px;
+            transition: all 0.2s;
+            margin-bottom: 2px;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .nav-item:hover {
-            background: rgba(88, 101, 242, 0.1);
-            color: #fff;
+            background: rgba(88, 101, 242, 0.08);
+            color: var(--text-primary);
         }
 
         .nav-item.active {
-            background: linear-gradient(135deg, rgba(88, 101, 242, 0.2), rgba(124, 58, 237, 0.2));
-            color: #5865F2;
+            background: linear-gradient(135deg, rgba(88, 101, 242, 0.2), rgba(124, 58, 237, 0.15));
+            color: var(--accent);
             border: 1px solid rgba(88, 101, 242, 0.3);
         }
 
-        .nav-item .icon { font-size: 20px; }
+        .nav-item .icon { font-size: 18px; }
         .nav-item .badge {
             margin-right: auto;
-            background: #ef4444;
+            background: var(--danger);
             color: #fff;
-            font-size: 11px;
-            padding: 2px 8px;
+            font-size: 10px;
+            padding: 2px 7px;
             border-radius: 10px;
             font-weight: 700;
+            min-width: 20px;
+            text-align: center;
         }
 
         /* Main */
         .main {
             padding: 24px 32px;
             overflow-y: auto;
+            max-height: 100vh;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 32px;
+            margin-bottom: 28px;
         }
 
         .header h1 {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 900;
-            margin: 0;
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .status {
@@ -134,221 +173,276 @@
             gap: 8px;
             background: rgba(16, 185, 129, 0.1);
             border: 1px solid rgba(16, 185, 129, 0.3);
-            padding: 8px 16px;
+            padding: 6px 14px;
             border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .status-dot {
             width: 8px;
             height: 8px;
-            background: #10b981;
+            background: var(--success);
             border-radius: 50%;
-            box-shadow: 0 0 12px #10b981;
+            box-shadow: 0 0 10px var(--success);
             animation: pulse 2s infinite;
         }
 
-        /* Stats */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 6px 14px 6px 6px;
+            border-radius: 20px;
+        }
+
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        /* Stats Grid */
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 28px;
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #1e1e2a, #25253a);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px;
-            padding: 24px;
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 20px;
             transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-3));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s;
         }
 
         .stat-card:hover {
             transform: translateY(-4px);
             border-color: rgba(88, 101, 242, 0.3);
-            box-shadow: 0 8px 32px rgba(88, 101, 242, 0.2);
+            box-shadow: 0 8px 24px rgba(88, 101, 242, 0.15);
+        }
+
+        .stat-card:hover::before {
+            transform: scaleX(1);
         }
 
         .stat-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
+            font-size: 28px;
+            margin-bottom: 8px;
         }
 
         .stat-value {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 900;
-            background: linear-gradient(135deg, #5865F2, #ec4899);
+            background: linear-gradient(135deg, var(--accent), var(--accent-3));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .stat-label {
-            color: #6c6c84;
-            font-size: 14px;
+            color: var(--text-muted);
+            font-size: 12px;
             margin-top: 4px;
         }
 
-        /* Guild Cards */
-        .guilds-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 16px;
-        }
-
-        .guild-card {
-            background: linear-gradient(135deg, #1e1e2a, #25253a);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px;
-            padding: 20px;
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-
-        .guild-card:hover {
-            transform: translateY(-4px);
-            border-color: #5865F2;
-            box-shadow: 0 8px 32px rgba(88, 101, 242, 0.3);
-        }
-
-        .guild-header {
+        /* Section */
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 14px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .guild-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #5865F2, #ec4899);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .guild-name {
-            font-weight: 700;
-            font-size: 16px;
-        }
-
-        .guild-id {
-            color: #6c6c84;
-            font-size: 12px;
-        }
-
-        .guild-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
             gap: 8px;
-            padding-top: 16px;
-            border-top: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .guild-stat {
-            text-align: center;
-        }
-
-        .guild-stat-value {
-            font-weight: 700;
-            color: #5865F2;
-        }
-
-        .guild-stat-label {
-            color: #6c6c84;
-            font-size: 11px;
         }
 
         /* Activity Feed */
-        .activity-feed {
-            background: #14141d;
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px;
-            padding: 20px;
-            max-height: 500px;
-            overflow-y: auto;
+        .feed {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            overflow: hidden;
         }
 
         .activity-item {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            transition: all 0.3s;
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            transition: background 0.2s;
         }
 
         .activity-item:hover {
-            background: rgba(88, 101, 242, 0.05);
+            background: rgba(88, 101, 242, 0.04);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
         }
 
         .activity-icon {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 18px;
+            flex-shrink: 0;
         }
 
         .activity-icon.ticket { background: rgba(88, 101, 242, 0.2); }
         .activity-icon.close { background: rgba(239, 68, 68, 0.2); }
         .activity-icon.create { background: rgba(16, 185, 129, 0.2); }
 
-        .activity-content {
-            flex: 1;
-        }
-
+        .activity-content { flex: 1; min-width: 0; }
         .activity-title {
             font-weight: 600;
             font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
         .activity-time {
-            color: #6c6c84;
+            color: var(--text-muted);
             font-size: 12px;
+            margin-top: 2px;
         }
 
-        /* Page sections */
-        .page { display: none; }
-        .page.active { display: block; }
-
-        .section-title {
-            font-size: 20px;
+        .status-tag {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
             font-weight: 700;
-            margin-bottom: 16px;
+        }
+
+        .status-tag.open { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .status-tag.closed { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+        .status-tag.pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+
+        /* Guild Cards */
+        .guilds-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 14px;
+        }
+
+        .guild-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 18px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .guild-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 8px 24px rgba(88, 101, 242, 0.2);
+        }
+
+        .guild-header {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+            margin-bottom: 14px;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .dashboard-container {
-                grid-template-columns: 1fr;
-            }
-            .sidebar {
-                display: none;
-            }
+        .guild-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
         }
+
+        .guild-name {
+            font-weight: 700;
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .guild-id {
+            color: var(--text-muted);
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        .guild-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .guild-stat-value {
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--accent);
+        }
+
+        .guild-stat-label {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        /* Pages */
+        .page { display: none; }
+        .page.active { display: block; }
 
         /* Loading */
         .loading {
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 60px;
-            color: #6c6c84;
+            padding: 40px;
+            color: var(--text-muted);
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             border: 3px solid rgba(88, 101, 242, 0.2);
-            border-top-color: #5865F2;
+            border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -356,12 +450,39 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Empty */
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            .sidebar {
+                position: fixed;
+                inset: 0 0 0 50%;
+                transform: translateX(100%);
+                z-index: 100;
+                transition: transform 0.3s;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .main { padding: 16px; }
+        }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
+    <div class="container">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="logo">
                 <span class="logo-icon">🎫</span>
                 <span class="logo-text">ALQUEEN</span>
@@ -386,120 +507,130 @@
 
             <div class="nav-section">
                 <div class="nav-title">الإعدادات</div>
-                <div class="nav-item" data-page="settings">
-                    <span class="icon">⚙️</span>
-                    <span>الإعدادات</span>
+                <div class="nav-item" data-page="bot">
+                    <span class="icon">🤖</span>
+                    <span>معلومات البوت</span>
                 </div>
-                <div class="nav-item" data-page="logs">
-                    <span class="icon">📋</span>
-                    <span>السجلات</span>
-                </div>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-title">الحساب</div>
                 <div class="nav-item" onclick="logout()">
                     <span class="icon">🚪</span>
-                    <span>تسجيل الخروج</span>
+                    <span>خروج</span>
                 </div>
             </div>
         </aside>
 
-        <!-- Main Content -->
+        <!-- Main -->
         <main class="main">
-            <!-- Header -->
             <div class="header">
-                <h1>👋 مرحباً، <span id="userName">User</span></h1>
-                <div class="status">
-                    <span class="status-dot"></span>
-                    <span>البوت متصل</span>
+                <h1 id="pageTitle">📊 نظرة عامة</h1>
+                <div class="header-info">
+                    <div class="status">
+                        <span class="status-dot"></span>
+                        <span id="botStatusText">البوت متصل</span>
+                    </div>
+                    <div class="user-pill">
+                        <div class="user-avatar" id="userAvatar">U</div>
+                        <span id="userName">مستخدم</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Overview Page -->
+            <!-- Overview -->
             <div class="page active" id="page-overview">
-                <!-- Stats -->
                 <div class="stats">
                     <div class="stat-card">
                         <div class="stat-icon">🌍</div>
-                        <div class="stat-value" id="totalGuilds">0</div>
+                        <div class="stat-value" id="totalGuilds">-</div>
                         <div class="stat-label">السيرفرات</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">👥</div>
-                        <div class="stat-value" id="totalUsers">0</div>
+                        <div class="stat-value" id="totalUsers">-</div>
                         <div class="stat-label">المستخدمين</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">🎫</div>
-                        <div class="stat-value" id="totalTickets">0</div>
+                        <div class="stat-value" id="totalTickets">-</div>
                         <div class="stat-label">إجمالي التكتات</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">🟢</div>
-                        <div class="stat-value" id="openTickets">0</div>
+                        <div class="stat-value" id="openTickets">-</div>
                         <div class="stat-label">تكتات مفتوحة</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">📡</div>
-                        <div class="stat-value" id="ping">0ms</div>
+                        <div class="stat-value" id="ping">-</div>
                         <div class="stat-label">البنق</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">⏱️</div>
-                        <div class="stat-value" id="uptime">0h</div>
+                        <div class="stat-value" id="uptime">-</div>
                         <div class="stat-label">مدة التشغيل</div>
                     </div>
                 </div>
 
-                <!-- Activity Feed -->
                 <h2 class="section-title">📡 النشاط المباشر</h2>
-                <div class="activity-feed" id="activityFeed">
-                    <div class="loading">
-                        <div class="spinner"></div>
+                <div class="feed" id="activityFeed">
+                    <div class="empty">
+                        <div class="empty-icon">📭</div>
+                        <p>في انتظار النشاط...</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Guilds Page -->
+            <!-- Guilds -->
             <div class="page" id="page-guilds">
                 <h2 class="section-title">🖥️ السيرفرات (<span id="guildCount">0</span>)</h2>
                 <div class="guilds-grid" id="guildsGrid">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                    </div>
+                    <div class="loading"><div class="spinner"></div></div>
                 </div>
             </div>
 
-            <!-- Tickets Page -->
+            <!-- Tickets -->
             <div class="page" id="page-tickets">
-                <h2 class="section-title">🎫 التكتات الأخيرة</h2>
-                <div class="activity-feed" id="ticketsList">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                    </div>
+                <h2 class="section-title">🎫 التكتات</h2>
+                <div class="feed" id="ticketsList">
+                    <div class="loading"><div class="spinner"></div></div>
                 </div>
             </div>
 
-            <!-- Settings Page -->
-            <div class="page" id="page-settings">
-                <h2 class="section-title">⚙️ إعدادات البوت</h2>
-                <div class="stat-card">
-                    <h3>معلومات البوت</h3>
-                    <p>🤖 الاسم: <span id="botName">ALQUEEN</span></p>
-                    <p>🆔 ID: <span id="botId">-</span></p>
-                    <p>📡 الحالة: <span style="color:#10b981">متصل</span></p>
-                    <p>🌐 السيرفرات: <span id="settingsGuilds">0</span></p>
-                    <p>⏱️ يعمل منذ: <span id="uptime2">-</span></p>
-                </div>
-            </div>
-
-            <!-- Logs Page -->
-            <div class="page" id="page-logs">
-                <h2 class="section-title">📋 سجل البوت</h2>
-                <div class="activity-feed" id="logsList" style="max-height: 600px;">
-                    <div class="loading">
-                        <div class="spinner"></div>
+            <!-- Bot Info -->
+            <div class="page" id="page-bot">
+                <h2 class="section-title">🤖 معلومات البوت الحية</h2>
+                <div class="guilds-grid" id="botInfo">
+                    <div class="guild-card">
+                        <h3>الحالة</h3>
+                        <p style="margin: 8px 0; color: var(--text-secondary)">
+                            ✅ البوت <span style="color: var(--success)">متصل ونشط</span>
+                        </p>
+                        <div id="botDetails">
+                            <div class="guild-stats" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div>
+                                    <div class="guild-stat-label">الاسم</div>
+                                    <div class="guild-stat-value" id="botName">-</div>
+                                </div>
+                                <div>
+                                    <div class="guild-stat-label">ID</div>
+                                    <div class="guild-stat-value" id="botId" style="font-size: 14px;">-</div>
+                                </div>
+                                <div>
+                                    <div class="guild-stat-label">السيرفرات</div>
+                                    <div class="guild-stat-value" id="botGuilds">-</div>
+                                </div>
+                                <div>
+                                    <div class="guild-stat-label">المستخدمين</div>
+                                    <div class="guild-stat-value" id="botUsers">-</div>
+                                </div>
+                                <div>
+                                    <div class="guild-stat-label">القنوات</div>
+                                    <div class="guild-stat-value" id="botChannels">-</div>
+                                </div>
+                                <div>
+                                    <div class="guild-stat-label">البنق</div>
+                                    <div class="guild-stat-value" id="botPing">-</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -507,80 +638,93 @@
     </div>
 
     <script>
-        // State
         let socket = null;
-        let currentPage = 'overview';
+        const titles = {
+            overview: '📊 نظرة عامة',
+            guilds: '🖥️ السيرفرات',
+            tickets: '🎫 التكتات',
+            bot: '🤖 معلومات البوت'
+        };
 
-        // Initialize
+        // Init
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadUser();
+            const user = await loadUser();
+            if (!user) return;
             await loadStats();
-            connectWebSocket();
-            setupNavigation();
+            connectSocket();
+            setupNav();
+            setInterval(loadStats, 15000);
         });
 
-        // Load user
         async function loadUser() {
             try {
                 const res = await fetch('/auth/me');
                 if (res.status === 401) {
                     window.location.href = '/';
-                    return;
+                    return null;
                 }
                 const { data } = await res.json();
                 document.getElementById('userName').textContent = data.username || data.tag;
+                document.getElementById('userAvatar').textContent = (data.username || 'U').charAt(0).toUpperCase();
+                return data;
             } catch (e) {
                 console.error('Auth error:', e);
+                window.location.href = '/';
             }
         }
 
-        // Load stats
         async function loadStats() {
             try {
                 const res = await fetch('/api/stats');
                 const { data } = await res.json();
 
                 if (data.bot) {
-                    document.getElementById('totalGuilds').textContent = data.bot.guilds || 0;
-                    document.getElementById('totalUsers').textContent = data.bot.users || 0;
-                    document.getElementById('ping').textContent = (data.bot.ping || 0) + 'ms';
+                    document.getElementById('totalGuilds').textContent = data.bot.guilds ?? 0;
+                    document.getElementById('totalUsers').textContent = data.bot.users ?? 0;
+                    document.getElementById('ping').textContent = (data.bot.ping ?? 0) + 'ms';
                     document.getElementById('uptime').textContent = formatUptime(data.bot.uptime);
 
                     document.getElementById('botName').textContent = data.bot.username || 'ALQUEEN';
                     document.getElementById('botId').textContent = data.bot.id || '-';
-                    document.getElementById('settingsGuilds').textContent = data.bot.guilds || 0;
-                    document.getElementById('uptime2').textContent = formatUptime(data.bot.uptime);
+                    document.getElementById('botGuilds').textContent = data.bot.guilds ?? 0;
+                    document.getElementById('botUsers').textContent = data.bot.users ?? 0;
+                    document.getElementById('botChannels').textContent = data.bot.channels ?? 0;
+                    document.getElementById('botPing').textContent = (data.bot.ping ?? 0) + 'ms';
                 }
 
                 if (data.tickets) {
-                    document.getElementById('totalTickets').textContent = data.tickets.total || 0;
-                    document.getElementById('openTickets').textContent = data.tickets.open || 0;
-                    document.getElementById('openBadge').textContent = data.tickets.open || 0;
+                    document.getElementById('totalTickets').textContent = data.tickets.total ?? 0;
+                    document.getElementById('openTickets').textContent = data.tickets.open ?? 0;
+                    document.getElementById('openBadge').textContent = data.tickets.open ?? 0;
                 }
 
                 if (data.guilds) {
-                    document.getElementById('guildCount').textContent = data.guilds.total || 0;
+                    document.getElementById('guildCount').textContent = data.guilds.total ?? 0;
                 }
             } catch (e) {
                 console.error('Stats error:', e);
             }
         }
 
-        // Connect WebSocket
-        function connectWebSocket() {
+        function connectSocket() {
             socket = io();
-
             socket.on('connect', () => {
-                console.log('✅ Connected to dashboard');
                 socket.emit('joinAll');
+                console.log('✅ Socket connected');
+            });
+
+            socket.on('botStats', (data) => {
+                if (data.guilds !== undefined) document.getElementById('totalGuilds').textContent = data.guilds;
+                if (data.users !== undefined) document.getElementById('totalUsers').textContent = data.users;
+                if (data.ping !== undefined) document.getElementById('ping').textContent = data.ping + 'ms';
             });
 
             socket.on('ticketCreated', (data) => {
                 addActivity({
                     icon: 'create',
                     emoji: '🎫',
-                    title: `تكت جديد: ${data.ticketId}`,
-                    subtitle: `بواسطة ${data.user}`,
+                    title: `تكت جديد #${data.ticketId}`,
+                    subtitle: `بواسطة ${data.user} • ${data.subject || 'بدون عنوان'}`,
                     time: 'الآن'
                 });
                 loadStats();
@@ -590,41 +734,28 @@
                 addActivity({
                     icon: 'close',
                     emoji: '🔒',
-                    title: `تكت مغلق: ${data.ticketId}`,
+                    title: `تكت مغلق #${data.ticketId}`,
                     subtitle: data.reason || 'بدون سبب',
                     time: 'الآن'
                 });
                 loadStats();
             });
-
-            socket.on('botStats', (data) => {
-                document.getElementById('totalGuilds').textContent = data.guilds;
-                document.getElementById('totalUsers').textContent = data.users;
-                document.getElementById('ping').textContent = data.ping + 'ms';
-            });
         }
 
-        // Navigation
-        function setupNavigation() {
+        function setupNav() {
             document.querySelectorAll('.nav-item[data-page]').forEach(item => {
                 item.addEventListener('click', () => {
                     const page = item.dataset.page;
                     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
                     item.classList.add('active');
-
                     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
                     document.getElementById(`page-${page}`).classList.add('active');
+                    document.getElementById('pageTitle').textContent = titles[page] || page;
 
-                    currentPage = page;
-                    loadPageData(page);
+                    if (page === 'guilds') loadGuilds();
+                    if (page === 'tickets') loadTickets();
                 });
             });
-        }
-
-        async function loadPageData(page) {
-            if (page === 'guilds') loadGuilds();
-            if (page === 'tickets') loadTickets();
-            if (page === 'logs') loadLogs();
         }
 
         async function loadGuilds() {
@@ -634,26 +765,26 @@
                 const grid = document.getElementById('guildsGrid');
 
                 if (!data || data.length === 0) {
-                    grid.innerHTML = '<p style="text-align:center;color:#6c6c84;padding:40px">لا توجد سيرفرات</p>';
+                    grid.innerHTML = '<div class="empty"><div class="empty-icon">🖥️</div><p>لا توجد سيرفرات في قاعدة البيانات</p></div>';
                     return;
                 }
 
-                grid.innerHTML = data.map(guild => `
+                grid.innerHTML = data.map(g => `
                     <div class="guild-card">
                         <div class="guild-header">
-                            <div class="guild-icon">${guild.name.charAt(0)}</div>
-                            <div>
-                                <div class="guild-name">${guild.name}</div>
-                                <div class="guild-id">ID: ${guild.guildId}</div>
+                            <div class="guild-icon">${(g.name || 'S').charAt(0)}</div>
+                            <div style="min-width: 0; flex: 1;">
+                                <div class="guild-name">${g.name || 'بدون اسم'}</div>
+                                <div class="guild-id">${g.guildId}</div>
                             </div>
                         </div>
                         <div class="guild-stats">
-                            <div class="guild-stat">
-                                <div class="guild-stat-value">${guild.stats?.totalTickets || 0}</div>
+                            <div>
+                                <div class="guild-stat-value">${g.stats?.totalTickets || 0}</div>
                                 <div class="guild-stat-label">تكت</div>
                             </div>
-                            <div class="guild-stat">
-                                <div class="guild-stat-value">${guild.stats?.openTickets || 0}</div>
+                            <div>
+                                <div class="guild-stat-value">${g.stats?.openTickets || 0}</div>
                                 <div class="guild-stat-label">مفتوح</div>
                             </div>
                         </div>
@@ -671,18 +802,18 @@
                 const list = document.getElementById('ticketsList');
 
                 if (!data || data.length === 0) {
-                    list.innerHTML = '<p style="text-align:center;color:#6c6c84;padding:40px">لا توجد تكتات</p>';
+                    list.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><p>لا توجد تكتات</p></div>';
                     return;
                 }
 
                 list.innerHTML = data.map(t => `
                     <div class="activity-item">
-                        <div class="activity-icon ticket">🎫</div>
+                        <div class="activity-icon ${t.status === 'open' ? 'ticket' : 'close'}">${t.status === 'open' ? '🎫' : '🔒'}</div>
                         <div class="activity-content">
-                            <div class="activity-title">${t.ticketId} - ${t.subject || 'بدون عنوان'}</div>
-                            <div class="activity-time">${t.userTag} • ${new Date(t.createdAt).toLocaleString('ar')}</div>
+                            <div class="activity-title">#${t.ticketId} - ${t.subject || 'بدون عنوان'}</div>
+                            <div class="activity-time">${t.userTag || 'مستخدم'} • ${new Date(t.createdAt).toLocaleString('ar')}</div>
                         </div>
-                        <div class="status-badge ${t.status}">${t.status}</div>
+                        <span class="status-tag ${t.status}">${t.status === 'open' ? 'مفتوح' : t.status === 'closed' ? 'مغلق' : t.status}</span>
                     </div>
                 `).join('');
             } catch (e) {
@@ -690,44 +821,29 @@
             }
         }
 
-        async function loadLogs() {
-            const logsList = document.getElementById('logsList');
-            logsList.innerHTML = `
-                <div class="activity-item">
-                    <div class="activity-icon create">✅</div>
-                    <div class="activity-content">
-                        <div class="activity-title">البوت متصل</div>
-                        <div class="activity-time">الآن</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Add activity
-        function addActivity(activity) {
+        function addActivity(a) {
             const feed = document.getElementById('activityFeed');
+            // Remove empty state
+            const empty = feed.querySelector('.empty');
+            if (empty) empty.remove();
+
             const item = document.createElement('div');
             item.className = 'activity-item';
             item.innerHTML = `
-                <div class="activity-icon ${activity.icon}">${activity.emoji}</div>
+                <div class="activity-icon ${a.icon}">${a.emoji}</div>
                 <div class="activity-content">
-                    <div class="activity-title">${activity.title}</div>
-                    <div class="activity-time">${activity.subtitle} • ${activity.time}</div>
+                    <div class="activity-title">${a.title}</div>
+                    <div class="activity-time">${a.subtitle} • ${a.time}</div>
                 </div>
             `;
             feed.insertBefore(item, feed.firstChild);
-
-            // Keep only 20 items
-            while (feed.children.length > 20) {
-                feed.removeChild(feed.lastChild);
-            }
+            while (feed.children.length > 30) feed.removeChild(feed.lastChild);
         }
 
-        // Utility
-        function formatUptime(uptime) {
-            if (!uptime) return '0h';
-            const h = Math.floor(uptime.total / 3600000);
-            const m = Math.floor((uptime.total % 3600000) / 60000);
+        function formatUptime(u) {
+            if (!u || !u.total) return '0h';
+            const h = Math.floor(u.total / 3600000);
+            const m = Math.floor((u.total % 3600000) / 60000);
             return `${h}h ${m}m`;
         }
 
@@ -735,9 +851,6 @@
             await fetch('/auth/logout');
             window.location.href = '/';
         }
-
-        // Refresh every 30s
-        setInterval(loadStats, 30000);
     </script>
 </body>
 </html>

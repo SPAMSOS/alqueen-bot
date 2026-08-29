@@ -30,6 +30,41 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
+            // ✅ التحقق من وجود نظام مسبقاً
+            const existingGuild = await Guild.findOne({ guildId: interaction.guild.id });
+
+            if (existingGuild && existingGuild.settings?.ticketCategoryId) {
+                // التحقق من أن القنوات لا تزال موجودة
+                const existingCategory = interaction.guild.channels.cache.get(existingGuild.settings.ticketCategoryId);
+                const existingPanel = existingGuild.settings.panelChannelId
+                    ? interaction.guild.channels.cache.get(existingGuild.settings.panelChannelId)
+                    : null;
+
+                if (existingCategory && existingPanel) {
+                    return interaction.editReply({
+                        embeds: [
+                            new EmbedBuilder()
+                                .setColor(0xFEE75C)
+                                .setTitle('⚠️ النظام مُعد مسبقاً!')
+                                .setDescription(`
+╭─**📋 النظام موجود بالفعل**─╮
+│
+│ 📁 القسم: ${existingCategory}
+│ 🎫 اللوحة: ${existingPanel}
+│ 📊 السجلات: ${existingGuild.settings.logChannelId ? `<#${existingGuild.settings.logChannelId}>` : '❌ محذوفة'}
+│
+╰───────────────────────────╯
+
+**💡 الخيارات المتاحة:**
+> 🔄 استخدم \`/panel\` لإعادة إرسال اللوحة
+> 🗑️ احذف القسم يدوياً ثم أعد \`/setup\`
+                                `)
+                                .setFooter({ text: 'ALQUEEN Ticket System' })
+                        ]
+                    });
+                }
+            }
+
             // إنشاء القسم
             const category = await interaction.guild.channels.create({
                 name: `🎫・${categoryName}`,
@@ -102,7 +137,7 @@ module.exports = {
             }
 
             // حفظ في قاعدة البيانات
-            Guild.findOneAndUpdate(
+            await Guild.findOneAndUpdate(
                 { guildId: interaction.guild.id },
                 {
                     guildId: interaction.guild.id,
@@ -111,41 +146,43 @@ module.exports = {
                     'settings.ticketCategoryId': category.id,
                     'settings.transcriptChannelId': transcriptChannel.id,
                     'settings.logChannelId': logChannel.id,
+                    'settings.panelChannelId': panelChannel.id,
                     'settings.supportRoleId': supportRole?.id
                 },
                 { upsert: true, new: true }
-            ).catch(err => console.error('DB:', err.message));
+            );
 
-            // Embed احترافي مع صورة متحركة
+            // Embed احترافي
             const panelEmbed = new EmbedBuilder()
                 .setColor(0x5865F2)
                 .setAuthor({
-                    name: interaction.guild.name,
-                    iconURL: interaction.guild.iconURL({ dynamic: true })
+                    name: `🎫 ${interaction.guild.name} - نظام التكتات`,
+                    iconURL: interaction.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL()
                 })
-                .setTitle('🎫 ˗ˏˋ نظام التكتات الاحترافي ´ˎ˗')
+                .setTitle('✨ نظام الدعم الفني الاحترافي ✨')
                 .setDescription(`
-╔═══════════════════════════════╗
-║  **مرحباً بك في الدعم الفني**  ║
-╚═══════════════════════════════╝
+╔═══════════════════════════════════╗
+║                                   ║
+║   **مرحباً بك في نظام التكتات**  ║
+║                                   ║
+╚═══════════════════════════════════╝
 
-> 🎫 **اختر نوع طلبك من الأزرار بالأسفل**
+> 🎫 **اختر نوع طلبك من الأزرار أدناه**
 
-╭─**📋 الفئات المتاحة**─╮
-│ 🛒 مشاكل الشراء
-│ 🔧 مشاكل تقنية
-│ 💡 اقتراحات
-│ 💬 استفسار آخر
-╰────────────────────╯
+**📋 الفئات المتاحة:**
+> 🛒 **مشاكل الشراء** - للإبلاغ عن مشاكل في المشتريات
+> 🔧 **مشاكل تقنية** - للمشاكل الفنية والإخطاء
+> 💡 **اقتراحات** - شاركنا أفكارك ومقترحاتك
+> 💬 **استفسار آخر** - لأي سؤال آخر
 
-> ⚡ **سرعة الرد:** خلال 24 ساعة
-> 👥 **فريق الدعم:** متاح 24/7
-> 🔒 **الخصوصية:** محمية 100%
+**⚡ معلومات سريعة:**
+> 🕐 سرعة الرد: خلال 24 ساعة
+> 👥 فريق الدعم: متاح 24/7
+> 🔒 الخصوصية: محمية 100%
+> ⭐ التقييم: نسعد برأيك
                 `)
-                .setThumbnail('https://cdn.discordapp.com/attachments/1234/ticket-icon.gif')
-                .setImage('https://i.imgur.com/removed.gif')
                 .setFooter({
-                    text: '✨ ALQUEEN Ticket System ✨',
+                    text: '🎫 ALQUEEN Ticket System',
                     iconURL: client.user.displayAvatarURL({ dynamic: true })
                 })
                 .setTimestamp();
@@ -155,41 +192,35 @@ module.exports = {
                     new ButtonBuilder()
                         .setCustomId('ticket_purchase')
                         .setLabel('🛒 شراء')
-                        .setStyle(ButtonStyle.Primary)
-                        .setEmoji('🛒'),
+                        .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('ticket_technical')
                         .setLabel('🔧 تقنية')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('🔧'),
+                        .setStyle(ButtonStyle.Secondary),
                     new ButtonBuilder()
                         .setCustomId('ticket_suggestion')
                         .setLabel('💡 اقتراح')
-                        .setStyle(ButtonStyle.Success)
-                        .setEmoji('💡'),
+                        .setStyle(ButtonStyle.Success),
                     new ButtonBuilder()
                         .setCustomId('ticket_other')
                         .setLabel('💬 أخرى')
                         .setStyle(ButtonStyle.Danger)
-                        .setEmoji('💬')
                 );
 
-            // إرسال اللوحة مع منشن للدور
             const mentionRole = supportRole ? `<@&${supportRole.id}>` : '';
             await panelChannel.send({
-                content: `## ✨ نظام التكتات ✨\n${mentionRole}`,
+                content: `## ✨ مرحباً - اختر تكت من الأزرار\n${mentionRole}`,
                 embeds: [panelEmbed],
                 components: [row]
             });
 
-            // رسالة نجاح
             await interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
                         .setColor(0x57F287)
                         .setTitle('✅ تم الإعداد بنجاح!')
                         .setDescription(`
-╭─**🎉 تم إنشاء النظام بالكامل**─╮
+╭─**🎉 النظام جاهز للاستخدام**─╮
 │
 │ 📁 القسم: \`${category.name}\`
 │ 📝 الترانسكريبت: \`${transcriptChannel.name}\`
@@ -200,34 +231,37 @@ ${supportRole ? `│ 🎧 الدعم: \`${supportRole.name}\`` : ''}
 ╰────────────────────────────╯
 
 **🌐 لوحة التحكم:**
-> [alqueen-bot.onrender.com](https://alqueen-bot.onrender.com)
+> https://alqueen-bot.onrender.com
                         `)
                         .setFooter({ text: 'ALQUEEN Ticket System' })
                 ]
             });
 
-            // إرسال Embed في قناة السجلات
-            const setupLog = new EmbedBuilder()
-                .setColor(0x57F287)
-                .setTitle('🔧 تم إعداد النظام')
-                .addFields(
-                    { name: '👤 المسؤول', value: interaction.user.tag, inline: true },
-                    { name: '📍 السيرفر', value: interaction.guild.name, inline: true }
-                )
-                .setTimestamp();
+            try {
+                const setupLog = new EmbedBuilder()
+                    .setColor(0x57F287)
+                    .setTitle('🔧 تم إعداد النظام')
+                    .addFields(
+                        { name: '👤 المسؤول', value: interaction.user.tag, inline: true },
+                        { name: '📍 السيرفر', value: interaction.guild.name, inline: true }
+                    )
+                    .setTimestamp();
 
-            await logChannel.send({ embeds: [setupLog] });
+                await logChannel.send({ embeds: [setupLog] });
+            } catch (e) {}
 
         } catch (error) {
             console.error('Setup error:', error.message);
-            await interaction.editReply({
-                embeds: [
-                    new EmbedBuilder()
-                        .setColor(0xED4245)
-                        .setTitle('❌ خطأ')
-                        .setDescription(`\`${error.message}\``)
-                ]
-            });
+            try {
+                await interaction.editReply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor(0xED4245)
+                            .setTitle('❌ خطأ')
+                            .setDescription(`\`${error.message}\``)
+                    ]
+                });
+            } catch (e) {}
         }
     }
 };
