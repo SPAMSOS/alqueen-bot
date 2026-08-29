@@ -32,16 +32,7 @@ class WebServer {
 
     setupMiddleware() {
         this.app.use(helmet({
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ["'self'"],
-                    scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-                    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-                    fontSrc: ["'self'", "https://fonts.gstatic.com"],
-                    imgSrc: ["'self'", "data:", "https:"],
-                    connectSrc: ["'self'", "ws:", "wss:"]
-                }
-            }
+            contentSecurityPolicy: false
         }));
 
         this.app.use(cors());
@@ -54,7 +45,7 @@ class WebServer {
             resave: false,
             saveUninitialized: false,
             cookie: {
-                maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+                maxAge: 1000 * 60 * 60 * 24 * 7,
                 httpOnly: true,
                 secure: false
             }
@@ -62,7 +53,7 @@ class WebServer {
 
         // Rate limiting
         const limiter = rateLimit({
-            windowMs: 15 * 60 * 1000, // 15 minutes
+            windowMs: 15 * 60 * 1000,
             max: 100
         });
         this.app.use('/api/', limiter);
