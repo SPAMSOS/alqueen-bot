@@ -18,7 +18,11 @@ class TicketBot extends Client {
                 Partials.Channel,
                 Partials.Reaction,
                 Partials.GuildMember
-            ]
+            ],
+            rest: {
+                timeout: 30000,
+                retries: 3
+            }
         });
 
         this.commands = new Collection();

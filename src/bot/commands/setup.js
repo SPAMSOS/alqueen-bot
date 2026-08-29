@@ -6,9 +6,6 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('setup')
         .setDescription('إعداد نظام التكتات في سيرفرك')
-        .setDescriptionLocalizations({
-            'en-US': 'Setup the ticket system in your server'
-        })
         .addStringOption(option =>
             option.setName('name')
                 .setDescription('اسم قسم التكتات (افتراضي: Tickets)')
@@ -16,7 +13,6 @@ module.exports = {
         ),
 
     async execute(interaction, client) {
-        // Check admin permissions
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return interaction.reply({
                 embeds: [
@@ -76,6 +72,7 @@ module.exports = {
             const panelChannel = await interaction.guild.channels.create({
                 name: '🎫-create-ticket',
                 type: ChannelType.GuildText,
+                parent: category,
                 permissionOverwrites: [
                     {
                         id: interaction.guild.roles.everyone,
@@ -96,51 +93,36 @@ module.exports = {
                     supportRole = await interaction.guild.roles.create({
                         name: '🎧 Support',
                         color: 0x5865F2,
-                        reason: 'ALQUEEN Ticket Bot Auto-created',
-                        permissions: [
-                            PermissionsBitField.Flags.ViewChannel,
-                            PermissionsBitField.Flags.SendMessages,
-                            PermissionsBitField.Flags.ManageMessages,
-                            PermissionsBitField.Flags.ReadMessageHistory
-                        ]
+                        reason: 'ALQUEEN Ticket Bot'
                     });
-                } catch (e) {
-                    console.log('Cannot create role (missing permissions)');
-                }
+                } catch (e) {}
             }
 
-            // Update category permissions with support role
+            // Update category permissions
             if (supportRole) {
-                await category.permissionOverwrites.create(supportRole, {
-                    ViewChannel: true,
-                    SendMessages: true,
-                    ReadMessageHistory: true
-                });
-                await transcriptChannel.permissionOverwrites.create(supportRole, {
-                    ViewChannel: true,
-                    ReadMessageHistory: true
-                });
-                await logChannel.permissionOverwrites.create(supportRole, {
-                    ViewChannel: true,
-                    ReadMessageHistory: true
-                });
+                try {
+                    await category.permissionOverwrites.create(supportRole, {
+                        ViewChannel: true,
+                        SendMessages: true,
+                        ReadMessageHistory: true
+                    });
+                } catch (e) {}
             }
 
-            // Save or update guild settings in database
-            let guildData = await Guild.findOne({ guildId: interaction.guild.id });
-            if (!guildData) {
-                guildData = new Guild({
+            // Save to database (don't block)
+            Guild.findOneAndUpdate(
+                { guildId: interaction.guild.id },
+                {
                     guildId: interaction.guild.id,
                     name: interaction.guild.name,
-                    ownerId: interaction.guild.ownerId
-                });
-            }
-
-            guildData.settings.ticketCategoryId = category.id;
-            guildData.settings.transcriptChannelId = transcriptChannel.id;
-            guildData.settings.logChannelId = logChannel.id;
-            guildData.settings.supportRoleId = supportRole?.id;
-            await guildData.save();
+                    ownerId: interaction.guild.ownerId,
+                    'settings.ticketCategoryId': category.id,
+                    'settings.transcriptChannelId': transcriptChannel.id,
+                    'settings.logChannelId': logChannel.id,
+                    'settings.supportRoleId': supportRole?.id
+                },
+                { upsert: true, new: true }
+            ).catch(err => console.error('DB save error:', err));
 
             // Create panel embed
             const panelEmbed = new EmbedBuilder()
@@ -149,19 +131,14 @@ module.exports = {
                 .setDescription(`
 **مرحباً بك في نظام الدعم الفني!**
 
-اختر نوع المشكلة التي تريد الإبلاغ عنها:
+اختر نوع المشكلة:
 
 > 🛒 **مشاكل الشراء** - للإبلاغ عن مشاكل في المشتريات
-> 🔧 **مشاكل تقنية** - للمشاكل الفنية والإخطاء
-> 💡 **اقتراحات** - شاركنا أفكارك ومقترحاتك
+> 🔧 **مشاكل تقنية** - للمشاكل الفنية
+> 💡 **اقتراحات** - شاركنا أفكارك
 > 💬 **أخرى** - لأي استفسار آخر
 
-━━━━━━━━━━━━━━━━━━━━━━━━
-📌 **معلومات مهمة:**
-> • الحد الأقصى للتكتات: **5**
-> • وقت الاستجابة: **خلال 24 ساعة**
-> • كن مهذباً ومحترماً
-━━━━━━━━━━━━━━━━━━━━━━━━
+📌 كن مهذباً ومحترماً.
                 `)
                 .setFooter({ text: 'ALQUEEN Ticket System' })
                 .setTimestamp();
@@ -170,11 +147,11 @@ module.exports = {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('ticket_purchase')
-                        .setLabel('🛒 مشاكل الشراء')
+                        .setLabel('🛒 شراء')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('ticket_technical')
-                        .setLabel('🔧 مشاكل تقنية')
+                        .setLabel('🔧 تقنية')
                         .setStyle(ButtonStyle.Secondary),
                     new ButtonBuilder()
                         .setCustomId('ticket_suggestion')
@@ -188,57 +165,36 @@ module.exports = {
 
             await panelChannel.send({ embeds: [panelEmbed], components: [row] });
 
-            // Success message
+            // Success - just send simple message, don't use toString() to avoid issues
             await interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
                         .setColor(config.colors.success)
                         .setTitle('✅ تم الإعداد بنجاح!')
                         .setDescription(`
-**تم إنشاء نظام التكتات في سيرفرك:**
+**تم إنشاء نظام التكتات:**
 
-> 📁 قسم التكتات: ${category}
-> 📝 قناة الترانسكريبت: ${transcriptChannel}
-> 📊 قناة السجلات: ${logChannel}
-> 🎫 قناة الإنشاء: ${panelChannel}
-${supportRole ? `> 🎧 رول الدعم: ${supportRole}` : ''}
+> 📁 القسم: \`${category.name}\`
+> 📝 الترانسكريبت: \`${transcriptChannel.name}\`
+> 📊 السجلات: \`${logChannel.name}\`
+> 🎫 اللوحة: \`${panelChannel.name}\`
+${supportRole ? `> 🎧 رول الدعم: \`${supportRole.name}\`` : ''}
 
-━━━━━━━━━━━━━━━━━━━━━━━━
-**📌 الخطوات التالية:**
-1. ✅ تم إنشاء رول Support تلقائياً (إن أمكن)
-2. 🔧 تأكد من إعطاء الرول الصلاحيات اللازمة
-3. 🎉 البوت جاهز للاستخدام!
-
-**🌐 لوحة التحكم:**
-> زُر موقعنا لإدارة التكتات من المتصفح
+**الخطوات التالية:**
+1. أعطِ رول Support الصلاحيات في القسم
+2. البوت جاهز للاستخدام!
                         `)
                 ]
             });
 
-            // Log to log channel
-            const setupLog = new EmbedBuilder()
-                .setColor(config.colors.success)
-                .setTitle('🔧 تم إعداد نظام التكتات')
-                .addFields(
-                    { name: 'المسؤول', value: interaction.user.tag, inline: true },
-                    { name: 'القناة', value: panelChannel.toString(), inline: true },
-                    { name: 'القسم', value: category.toString(), inline: true }
-                )
-                .setTimestamp();
-
-            await logChannel.send({ embeds: [setupLog] });
-
         } catch (error) {
-            console.error('Setup error:', error);
+            console.error('Setup error:', error.message);
             await interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
                         .setColor(config.colors.danger)
                         .setTitle('❌ حدث خطأ')
-                        .setDescription(`**الخطأ:** ${error.message}\n\n**تأكد من:**
-> • البوت لديه صلاحية Administrator
-> • البوت يقدر ينشأ قنوات
-> • البوت يقدر ينشأ رولات`)
+                        .setDescription(`**الخطأ:** ${error.message}\n\n**تأكد من:**\n• البوت Administrator\n• البوت يقدر ينشأ قنوات`)
                 ]
             });
         }
