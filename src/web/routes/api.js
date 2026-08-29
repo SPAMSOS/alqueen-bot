@@ -7,15 +7,23 @@ const TicketLog = require('../../database/models/TicketLog');
 // Bot stats
 router.get('/stats', async (req, res) => {
     try {
+        const client = req.app.locals.client;
         const guilds = await Guild.find();
         const totalTickets = await Ticket.countDocuments();
         const openTickets = await Ticket.countDocuments({ status: 'open' });
         const closedTickets = await Ticket.countDocuments({ status: 'closed' });
 
+        const botStats = client ? await client.getStats() : {};
+        const botInfo = client?.user ? {
+            username: client.user.username,
+            id: client.user.id,
+            avatar: client.user.displayAvatarURL()
+        } : {};
+
         res.json({
             success: true,
             data: {
-                bot: await req.app.locals.client?.getStats() || {},
+                bot: { ...botStats, ...botInfo },
                 tickets: {
                     total: totalTickets,
                     open: openTickets,

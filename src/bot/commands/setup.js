@@ -5,10 +5,10 @@ const Guild = require('../../database/models/Guild');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('setup')
-        .setDescription('إعداد نظام التكتات في سيرفرك')
+        .setDescription('🎫 إعداد نظام التكتات الاحترافي في سيرفرك')
         .addStringOption(option =>
             option.setName('name')
-                .setDescription('اسم قسم التكتات (افتراضي: Tickets)')
+                .setDescription('اسم قسم التكتات')
                 .setRequired(false)
         ),
 
@@ -17,9 +17,9 @@ module.exports = {
             return interaction.reply({
                 embeds: [
                     new EmbedBuilder()
-                        .setColor(config.colors.danger)
+                        .setColor(0xED4245)
                         .setTitle('⛔ لا تملك الصلاحية')
-                        .setDescription('هذا الأمر يتطلب صلاحية **Administrator**.')
+                        .setDescription('تحتاج صلاحية **Administrator**')
                 ],
                 ephemeral: true
             });
@@ -30,9 +30,9 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
-            // Create category
+            // إنشاء القسم
             const category = await interaction.guild.channels.create({
-                name: `🎫 ${categoryName}`,
+                name: `🎫・${categoryName}`,
                 type: ChannelType.GuildCategory,
                 permissionOverwrites: [
                     {
@@ -42,35 +42,27 @@ module.exports = {
                 ]
             });
 
-            // Create transcript channel
+            // القنوات
             const transcriptChannel = await interaction.guild.channels.create({
-                name: '📝-transcripts',
+                name: '📝・transcripts',
                 type: ChannelType.GuildText,
                 parent: category,
                 permissionOverwrites: [
-                    {
-                        id: interaction.guild.roles.everyone,
-                        deny: [PermissionsBitField.Flags.ViewChannel]
-                    }
+                    { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] }
                 ]
             });
 
-            // Create logs channel
             const logChannel = await interaction.guild.channels.create({
-                name: '📊-ticket-logs',
+                name: '📊・logs',
                 type: ChannelType.GuildText,
                 parent: category,
                 permissionOverwrites: [
-                    {
-                        id: interaction.guild.roles.everyone,
-                        deny: [PermissionsBitField.Flags.ViewChannel]
-                    }
+                    { id: interaction.guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] }
                 ]
             });
 
-            // Create panel channel
             const panelChannel = await interaction.guild.channels.create({
-                name: '🎫-create-ticket',
+                name: '🎫・create-ticket',
                 type: ChannelType.GuildText,
                 parent: category,
                 permissionOverwrites: [
@@ -81,7 +73,7 @@ module.exports = {
                 ]
             });
 
-            // Find or create Support role
+            // رول الدعم
             let supportRole = interaction.guild.roles.cache.find(r =>
                 r.name.toLowerCase().includes('support') ||
                 r.name.includes('دعم') ||
@@ -98,18 +90,18 @@ module.exports = {
                 } catch (e) {}
             }
 
-            // Update category permissions
             if (supportRole) {
                 try {
                     await category.permissionOverwrites.create(supportRole, {
                         ViewChannel: true,
                         SendMessages: true,
-                        ReadMessageHistory: true
+                        ReadMessageHistory: true,
+                        ManageMessages: true
                     });
                 } catch (e) {}
             }
 
-            // Save to database (don't block)
+            // حفظ في قاعدة البيانات
             Guild.findOneAndUpdate(
                 { guildId: interaction.guild.id },
                 {
@@ -122,25 +114,40 @@ module.exports = {
                     'settings.supportRoleId': supportRole?.id
                 },
                 { upsert: true, new: true }
-            ).catch(err => console.error('DB save error:', err));
+            ).catch(err => console.error('DB:', err.message));
 
-            // Create panel embed
+            // Embed احترافي مع صورة متحركة
             const panelEmbed = new EmbedBuilder()
-                .setColor(config.colors.primary)
-                .setTitle('🎫 نظام التكتات')
+                .setColor(0x5865F2)
+                .setAuthor({
+                    name: interaction.guild.name,
+                    iconURL: interaction.guild.iconURL({ dynamic: true })
+                })
+                .setTitle('🎫 ˗ˏˋ نظام التكتات الاحترافي ´ˎ˗')
                 .setDescription(`
-**مرحباً بك في نظام الدعم الفني!**
+╔═══════════════════════════════╗
+║  **مرحباً بك في الدعم الفني**  ║
+╚═══════════════════════════════╝
 
-اختر نوع المشكلة:
+> 🎫 **اختر نوع طلبك من الأزرار بالأسفل**
 
-> 🛒 **مشاكل الشراء** - للإبلاغ عن مشاكل في المشتريات
-> 🔧 **مشاكل تقنية** - للمشاكل الفنية
-> 💡 **اقتراحات** - شاركنا أفكارك
-> 💬 **أخرى** - لأي استفسار آخر
+╭─**📋 الفئات المتاحة**─╮
+│ 🛒 مشاكل الشراء
+│ 🔧 مشاكل تقنية
+│ 💡 اقتراحات
+│ 💬 استفسار آخر
+╰────────────────────╯
 
-📌 كن مهذباً ومحترماً.
+> ⚡ **سرعة الرد:** خلال 24 ساعة
+> 👥 **فريق الدعم:** متاح 24/7
+> 🔒 **الخصوصية:** محمية 100%
                 `)
-                .setFooter({ text: 'ALQUEEN Ticket System' })
+                .setThumbnail('https://cdn.discordapp.com/attachments/1234/ticket-icon.gif')
+                .setImage('https://i.imgur.com/removed.gif')
+                .setFooter({
+                    text: '✨ ALQUEEN Ticket System ✨',
+                    iconURL: client.user.displayAvatarURL({ dynamic: true })
+                })
                 .setTimestamp();
 
             const row = new ActionRowBuilder()
@@ -148,53 +155,77 @@ module.exports = {
                     new ButtonBuilder()
                         .setCustomId('ticket_purchase')
                         .setLabel('🛒 شراء')
-                        .setStyle(ButtonStyle.Primary),
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji('🛒'),
                     new ButtonBuilder()
                         .setCustomId('ticket_technical')
                         .setLabel('🔧 تقنية')
-                        .setStyle(ButtonStyle.Secondary),
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('🔧'),
                     new ButtonBuilder()
                         .setCustomId('ticket_suggestion')
                         .setLabel('💡 اقتراح')
-                        .setStyle(ButtonStyle.Success),
+                        .setStyle(ButtonStyle.Success)
+                        .setEmoji('💡'),
                     new ButtonBuilder()
                         .setCustomId('ticket_other')
                         .setLabel('💬 أخرى')
                         .setStyle(ButtonStyle.Danger)
+                        .setEmoji('💬')
                 );
 
-            await panelChannel.send({ embeds: [panelEmbed], components: [row] });
+            // إرسال اللوحة مع منشن للدور
+            const mentionRole = supportRole ? `<@&${supportRole.id}>` : '';
+            await panelChannel.send({
+                content: `## ✨ نظام التكتات ✨\n${mentionRole}`,
+                embeds: [panelEmbed],
+                components: [row]
+            });
 
-            // Success - just send simple message, don't use toString() to avoid issues
+            // رسالة نجاح
             await interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
-                        .setColor(config.colors.success)
+                        .setColor(0x57F287)
                         .setTitle('✅ تم الإعداد بنجاح!')
                         .setDescription(`
-**تم إنشاء نظام التكتات:**
+╭─**🎉 تم إنشاء النظام بالكامل**─╮
+│
+│ 📁 القسم: \`${category.name}\`
+│ 📝 الترانسكريبت: \`${transcriptChannel.name}\`
+│ 📊 السجلات: \`${logChannel.name}\`
+│ 🎫 اللوحة: \`${panelChannel.name}\`
+${supportRole ? `│ 🎧 الدعم: \`${supportRole.name}\`` : ''}
+│
+╰────────────────────────────╯
 
-> 📁 القسم: \`${category.name}\`
-> 📝 الترانسكريبت: \`${transcriptChannel.name}\`
-> 📊 السجلات: \`${logChannel.name}\`
-> 🎫 اللوحة: \`${panelChannel.name}\`
-${supportRole ? `> 🎧 رول الدعم: \`${supportRole.name}\`` : ''}
-
-**الخطوات التالية:**
-1. أعطِ رول Support الصلاحيات في القسم
-2. البوت جاهز للاستخدام!
+**🌐 لوحة التحكم:**
+> [alqueen-bot.onrender.com](https://alqueen-bot.onrender.com)
                         `)
+                        .setFooter({ text: 'ALQUEEN Ticket System' })
                 ]
             });
+
+            // إرسال Embed في قناة السجلات
+            const setupLog = new EmbedBuilder()
+                .setColor(0x57F287)
+                .setTitle('🔧 تم إعداد النظام')
+                .addFields(
+                    { name: '👤 المسؤول', value: interaction.user.tag, inline: true },
+                    { name: '📍 السيرفر', value: interaction.guild.name, inline: true }
+                )
+                .setTimestamp();
+
+            await logChannel.send({ embeds: [setupLog] });
 
         } catch (error) {
             console.error('Setup error:', error.message);
             await interaction.editReply({
                 embeds: [
                     new EmbedBuilder()
-                        .setColor(config.colors.danger)
-                        .setTitle('❌ حدث خطأ')
-                        .setDescription(`**الخطأ:** ${error.message}\n\n**تأكد من:**\n• البوت Administrator\n• البوت يقدر ينشأ قنوات`)
+                        .setColor(0xED4245)
+                        .setTitle('❌ خطأ')
+                        .setDescription(`\`${error.message}\``)
                 ]
             });
         }

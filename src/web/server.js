@@ -99,13 +99,29 @@ class WebServer {
 
             socket.on('joinGuild', (guildId) => {
                 socket.join(`guild:${guildId}`);
-                console.log(`Socket ${socket.id} joined guild:${guildId}`);
+            });
+
+            socket.on('joinAll', () => {
+                socket.join('all-guilds');
             });
 
             socket.on('disconnect', () => {
                 console.log('🔌 Dashboard client disconnected:', socket.id);
             });
         });
+
+        // Send bot stats every 10 seconds
+        setInterval(async () => {
+            if (this.client && this.client.user) {
+                const stats = await this.client.getStats();
+                this.io.to('all-guilds').emit('botStats', {
+                    guilds: stats.guilds,
+                    users: stats.users,
+                    ping: stats.ping,
+                    uptime: stats.uptime
+                });
+            }
+        }, 10000);
     }
 
     start() {

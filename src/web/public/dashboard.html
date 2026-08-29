@@ -5,170 +5,739 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم - ALQUEEN</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/dashboard.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0f;
+            color: #fff;
+            font-family: 'Cairo', sans-serif;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: linear-gradient(180deg, #14141d 0%, #1e1e2a 100%);
+            border-left: 1px solid rgba(255,255,255,0.08);
+            padding: 24px 16px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 12px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 24px;
+        }
+
+        .logo-icon {
+            font-size: 32px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .logo-text {
+            font-size: 22px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #5865F2, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-section {
+            margin-bottom: 24px;
+        }
+
+        .nav-title {
+            font-size: 11px;
+            color: #6c6c84;
+            text-transform: uppercase;
+            padding: 8px 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: #b4b4c8;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background: rgba(88, 101, 242, 0.1);
+            color: #fff;
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(88, 101, 242, 0.2), rgba(124, 58, 237, 0.2));
+            color: #5865F2;
+            border: 1px solid rgba(88, 101, 242, 0.3);
+        }
+
+        .nav-item .icon { font-size: 20px; }
+        .nav-item .badge {
+            margin-right: auto;
+            background: #ef4444;
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        /* Main */
+        .main {
+            padding: 24px 32px;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 900;
+            margin: 0;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 12px #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1e1e2a, #25253a);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(88, 101, 242, 0.3);
+            box-shadow: 0 8px 32px rgba(88, 101, 242, 0.2);
+        }
+
+        .stat-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #5865F2, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: #6c6c84;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Guild Cards */
+        .guilds-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .guild-card {
+            background: linear-gradient(135deg, #1e1e2a, #25253a);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .guild-card:hover {
+            transform: translateY(-4px);
+            border-color: #5865F2;
+            box-shadow: 0 8px 32px rgba(88, 101, 242, 0.3);
+        }
+
+        .guild-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .guild-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #5865F2, #ec4899);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .guild-name {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .guild-id {
+            color: #6c6c84;
+            font-size: 12px;
+        }
+
+        .guild-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .guild-stat {
+            text-align: center;
+        }
+
+        .guild-stat-value {
+            font-weight: 700;
+            color: #5865F2;
+        }
+
+        .guild-stat-label {
+            color: #6c6c84;
+            font-size: 11px;
+        }
+
+        /* Activity Feed */
+        .activity-feed {
+            background: #14141d;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s;
+        }
+
+        .activity-item:hover {
+            background: rgba(88, 101, 242, 0.05);
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .activity-icon.ticket { background: rgba(88, 101, 242, 0.2); }
+        .activity-icon.close { background: rgba(239, 68, 68, 0.2); }
+        .activity-icon.create { background: rgba(16, 185, 129, 0.2); }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .activity-time {
+            color: #6c6c84;
+            font-size: 12px;
+        }
+
+        /* Page sections */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                display: none;
+            }
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            color: #6c6c84;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(88, 101, 242, 0.2);
+            border-top-color: #5865F2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-    <div class="dashboard">
+    <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-brand">
-                    <span>🎫</span>
-                    <span>ALQUEEN</span>
+            <div class="logo">
+                <span class="logo-icon">🎫</span>
+                <span class="logo-text">ALQUEEN</span>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">الرئيسية</div>
+                <div class="nav-item active" data-page="overview">
+                    <span class="icon">📊</span>
+                    <span>نظرة عامة</span>
+                </div>
+                <div class="nav-item" data-page="guilds">
+                    <span class="icon">🖥️</span>
+                    <span>السيرفرات</span>
+                </div>
+                <div class="nav-item" data-page="tickets">
+                    <span class="icon">🎫</span>
+                    <span>التكتات</span>
+                    <span class="badge" id="openBadge">0</span>
                 </div>
             </div>
 
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">عام</div>
-                    <a class="nav-item active" data-page="overview">
-                        <span class="nav-item-icon">📊</span>
-                        <span>نظرة عامة</span>
-                    </a>
-                    <a class="nav-item" data-page="servers">
-                        <span class="nav-item-icon">🖥️</span>
-                        <span>السيرفرات</span>
-                    </a>
-                    <a class="nav-item" data-page="tickets">
-                        <span class="nav-item-icon">🎫</span>
-                        <span>التكتات</span>
-                        <span class="nav-item-badge" id="openTicketsBadge">0</span>
-                    </a>
+            <div class="nav-section">
+                <div class="nav-title">الإعدادات</div>
+                <div class="nav-item" data-page="settings">
+                    <span class="icon">⚙️</span>
+                    <span>الإعدادات</span>
                 </div>
+                <div class="nav-item" data-page="logs">
+                    <span class="icon">📋</span>
+                    <span>السجلات</span>
+                </div>
+            </div>
 
-                <div class="nav-section">
-                    <div class="nav-section-title">إدارة</div>
-                    <a class="nav-item" data-page="settings">
-                        <span class="nav-item-icon">⚙️</span>
-                        <span>الإعدادات</span>
-                    </a>
-                    <a class="nav-item" data-page="analytics">
-                        <span class="nav-item-icon">📈</span>
-                        <span>التحليلات</span>
-                    </a>
+            <div class="nav-section">
+                <div class="nav-title">الحساب</div>
+                <div class="nav-item" onclick="logout()">
+                    <span class="icon">🚪</span>
+                    <span>تسجيل الخروج</span>
                 </div>
-
-                <div class="nav-section">
-                    <div class="nav-section-title">الملف الشخصي</div>
-                    <a class="nav-item" href="/auth/logout">
-                        <span class="nav-item-icon">🚪</span>
-                        <span>تسجيل الخروج</span>
-                    </a>
-                </div>
-            </nav>
+            </div>
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main">
             <!-- Header -->
-            <header class="dashboard-header">
-                <div class="header-left">
-                    <h1>لوحة التحكم</h1>
-                    <p>مرحباً بك في لوحة تحكم ALQUEEN</p>
-                </div>
-                <div class="header-right">
-                    <div class="search-box">
-                        <input type="text" placeholder="ابحث عن تكت أو مستخدم..." id="searchInput">
-                    </div>
-                    <div class="user-menu">
-                        <div class="user-avatar" id="userAvatar">U</div>
-                        <span id="userName">User</span>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-card-header">
-                        <div class="stat-card-icon blue">🎫</div>
-                        <div class="stat-trend up">+12%</div>
-                    </div>
-                    <h3 id="totalTickets">0</h3>
-                    <p>إجمالي التكتات</p>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-card-header">
-                        <div class="stat-card-icon green">🟢</div>
-                        <div class="stat-trend up">+5</div>
-                    </div>
-                    <h3 id="openTicketsCount">0</h3>
-                    <p>التكتات المفتوحة</p>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-card-header">
-                        <div class="stat-card-icon red">🔴</div>
-                        <div class="stat-trend down">-8%</div>
-                    </div>
-                    <h3 id="closedTicketsCount">0</h3>
-                    <p>التكتات المغلقة</p>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-card-header">
-                        <div class="stat-card-icon yellow">⭐</div>
-                    </div>
-                    <h3 id="avgRating">0.0</h3>
-                    <p>متوسط التقييم</p>
+            <div class="header">
+                <h1>👋 مرحباً، <span id="userName">User</span></h1>
+                <div class="status">
+                    <span class="status-dot"></span>
+                    <span>البوت متصل</span>
                 </div>
             </div>
 
-            <!-- Tickets Table -->
-            <div class="table-container">
-                <div class="table-header">
-                    <h3>آخر التكتات</h3>
-                    <div class="table-filters">
-                        <button class="filter-btn active" data-filter="all">الكل</button>
-                        <button class="filter-btn" data-filter="open">مفتوحة</button>
-                        <button class="filter-btn" data-filter="pending">قيد الانتظار</button>
-                        <button class="filter-btn" data-filter="closed">مغلقة</button>
+            <!-- Overview Page -->
+            <div class="page active" id="page-overview">
+                <!-- Stats -->
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">🌍</div>
+                        <div class="stat-value" id="totalGuilds">0</div>
+                        <div class="stat-label">السيرفرات</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="totalUsers">0</div>
+                        <div class="stat-label">المستخدمين</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎫</div>
+                        <div class="stat-value" id="totalTickets">0</div>
+                        <div class="stat-label">إجمالي التكتات</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🟢</div>
+                        <div class="stat-value" id="openTickets">0</div>
+                        <div class="stat-label">تكتات مفتوحة</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📡</div>
+                        <div class="stat-value" id="ping">0ms</div>
+                        <div class="stat-label">البنق</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-value" id="uptime">0h</div>
+                        <div class="stat-label">مدة التشغيل</div>
                     </div>
                 </div>
 
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>رقم التكت</th>
-                                <th>المستخدم</th>
-                                <th>الموضوع</th>
-                                <th>الفئة</th>
-                                <th>الحالة</th>
-                                <th>التاريخ</th>
-                                <th>إجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ticketsTable">
-                            <!-- Dynamic content -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div id="emptyState" class="empty-state" style="display: none;">
-                    <div class="empty-state-icon">🎫</div>
-                    <h3>لا توجد تكتات</h3>
-                    <p>لم يتم إنشاء أي تكتات بعد. التكتات ستظهر هنا عند إنشائها.</p>
-                </div>
-
-                <div class="pagination">
-                    <div class="pagination-info" id="paginationInfo">
-                        عرض 0 - 0 من 0
+                <!-- Activity Feed -->
+                <h2 class="section-title">📡 النشاط المباشر</h2>
+                <div class="activity-feed" id="activityFeed">
+                    <div class="loading">
+                        <div class="spinner"></div>
                     </div>
-                    <div class="pagination-buttons">
-                        <button class="page-btn" id="prevPage" disabled>→</button>
-                        <button class="page-btn" id="nextPage" disabled>←</button>
+                </div>
+            </div>
+
+            <!-- Guilds Page -->
+            <div class="page" id="page-guilds">
+                <h2 class="section-title">🖥️ السيرفرات (<span id="guildCount">0</span>)</h2>
+                <div class="guilds-grid" id="guildsGrid">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tickets Page -->
+            <div class="page" id="page-tickets">
+                <h2 class="section-title">🎫 التكتات الأخيرة</h2>
+                <div class="activity-feed" id="ticketsList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="page-settings">
+                <h2 class="section-title">⚙️ إعدادات البوت</h2>
+                <div class="stat-card">
+                    <h3>معلومات البوت</h3>
+                    <p>🤖 الاسم: <span id="botName">ALQUEEN</span></p>
+                    <p>🆔 ID: <span id="botId">-</span></p>
+                    <p>📡 الحالة: <span style="color:#10b981">متصل</span></p>
+                    <p>🌐 السيرفرات: <span id="settingsGuilds">0</span></p>
+                    <p>⏱️ يعمل منذ: <span id="uptime2">-</span></p>
+                </div>
+            </div>
+
+            <!-- Logs Page -->
+            <div class="page" id="page-logs">
+                <h2 class="section-title">📋 سجل البوت</h2>
+                <div class="activity-feed" id="logsList" style="max-height: 600px;">
+                    <div class="loading">
+                        <div class="spinner"></div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
+    <script>
+        // State
+        let socket = null;
+        let currentPage = 'overview';
 
-    <script src="/js/dashboard.js"></script>
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUser();
+            await loadStats();
+            connectWebSocket();
+            setupNavigation();
+        });
+
+        // Load user
+        async function loadUser() {
+            try {
+                const res = await fetch('/auth/me');
+                if (res.status === 401) {
+                    window.location.href = '/';
+                    return;
+                }
+                const { data } = await res.json();
+                document.getElementById('userName').textContent = data.username || data.tag;
+            } catch (e) {
+                console.error('Auth error:', e);
+            }
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const { data } = await res.json();
+
+                if (data.bot) {
+                    document.getElementById('totalGuilds').textContent = data.bot.guilds || 0;
+                    document.getElementById('totalUsers').textContent = data.bot.users || 0;
+                    document.getElementById('ping').textContent = (data.bot.ping || 0) + 'ms';
+                    document.getElementById('uptime').textContent = formatUptime(data.bot.uptime);
+
+                    document.getElementById('botName').textContent = data.bot.username || 'ALQUEEN';
+                    document.getElementById('botId').textContent = data.bot.id || '-';
+                    document.getElementById('settingsGuilds').textContent = data.bot.guilds || 0;
+                    document.getElementById('uptime2').textContent = formatUptime(data.bot.uptime);
+                }
+
+                if (data.tickets) {
+                    document.getElementById('totalTickets').textContent = data.tickets.total || 0;
+                    document.getElementById('openTickets').textContent = data.tickets.open || 0;
+                    document.getElementById('openBadge').textContent = data.tickets.open || 0;
+                }
+
+                if (data.guilds) {
+                    document.getElementById('guildCount').textContent = data.guilds.total || 0;
+                }
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
+        }
+
+        // Connect WebSocket
+        function connectWebSocket() {
+            socket = io();
+
+            socket.on('connect', () => {
+                console.log('✅ Connected to dashboard');
+                socket.emit('joinAll');
+            });
+
+            socket.on('ticketCreated', (data) => {
+                addActivity({
+                    icon: 'create',
+                    emoji: '🎫',
+                    title: `تكت جديد: ${data.ticketId}`,
+                    subtitle: `بواسطة ${data.user}`,
+                    time: 'الآن'
+                });
+                loadStats();
+            });
+
+            socket.on('ticketClosed', (data) => {
+                addActivity({
+                    icon: 'close',
+                    emoji: '🔒',
+                    title: `تكت مغلق: ${data.ticketId}`,
+                    subtitle: data.reason || 'بدون سبب',
+                    time: 'الآن'
+                });
+                loadStats();
+            });
+
+            socket.on('botStats', (data) => {
+                document.getElementById('totalGuilds').textContent = data.guilds;
+                document.getElementById('totalUsers').textContent = data.users;
+                document.getElementById('ping').textContent = data.ping + 'ms';
+            });
+        }
+
+        // Navigation
+        function setupNavigation() {
+            document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+                item.addEventListener('click', () => {
+                    const page = item.dataset.page;
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+
+                    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                    document.getElementById(`page-${page}`).classList.add('active');
+
+                    currentPage = page;
+                    loadPageData(page);
+                });
+            });
+        }
+
+        async function loadPageData(page) {
+            if (page === 'guilds') loadGuilds();
+            if (page === 'tickets') loadTickets();
+            if (page === 'logs') loadLogs();
+        }
+
+        async function loadGuilds() {
+            try {
+                const res = await fetch('/api/guilds');
+                const { data } = await res.json();
+                const grid = document.getElementById('guildsGrid');
+
+                if (!data || data.length === 0) {
+                    grid.innerHTML = '<p style="text-align:center;color:#6c6c84;padding:40px">لا توجد سيرفرات</p>';
+                    return;
+                }
+
+                grid.innerHTML = data.map(guild => `
+                    <div class="guild-card">
+                        <div class="guild-header">
+                            <div class="guild-icon">${guild.name.charAt(0)}</div>
+                            <div>
+                                <div class="guild-name">${guild.name}</div>
+                                <div class="guild-id">ID: ${guild.guildId}</div>
+                            </div>
+                        </div>
+                        <div class="guild-stats">
+                            <div class="guild-stat">
+                                <div class="guild-stat-value">${guild.stats?.totalTickets || 0}</div>
+                                <div class="guild-stat-label">تكت</div>
+                            </div>
+                            <div class="guild-stat">
+                                <div class="guild-stat-value">${guild.stats?.openTickets || 0}</div>
+                                <div class="guild-stat-label">مفتوح</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Load guilds:', e);
+            }
+        }
+
+        async function loadTickets() {
+            try {
+                const res = await fetch('/api/tickets?limit=50');
+                const { data } = await res.json();
+                const list = document.getElementById('ticketsList');
+
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<p style="text-align:center;color:#6c6c84;padding:40px">لا توجد تكتات</p>';
+                    return;
+                }
+
+                list.innerHTML = data.map(t => `
+                    <div class="activity-item">
+                        <div class="activity-icon ticket">🎫</div>
+                        <div class="activity-content">
+                            <div class="activity-title">${t.ticketId} - ${t.subject || 'بدون عنوان'}</div>
+                            <div class="activity-time">${t.userTag} • ${new Date(t.createdAt).toLocaleString('ar')}</div>
+                        </div>
+                        <div class="status-badge ${t.status}">${t.status}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Load tickets:', e);
+            }
+        }
+
+        async function loadLogs() {
+            const logsList = document.getElementById('logsList');
+            logsList.innerHTML = `
+                <div class="activity-item">
+                    <div class="activity-icon create">✅</div>
+                    <div class="activity-content">
+                        <div class="activity-title">البوت متصل</div>
+                        <div class="activity-time">الآن</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Add activity
+        function addActivity(activity) {
+            const feed = document.getElementById('activityFeed');
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            item.innerHTML = `
+                <div class="activity-icon ${activity.icon}">${activity.emoji}</div>
+                <div class="activity-content">
+                    <div class="activity-title">${activity.title}</div>
+                    <div class="activity-time">${activity.subtitle} • ${activity.time}</div>
+                </div>
+            `;
+            feed.insertBefore(item, feed.firstChild);
+
+            // Keep only 20 items
+            while (feed.children.length > 20) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        // Utility
+        function formatUptime(uptime) {
+            if (!uptime) return '0h';
+            const h = Math.floor(uptime.total / 3600000);
+            const m = Math.floor((uptime.total % 3600000) / 60000);
+            return `${h}h ${m}m`;
+        }
+
+        async function logout() {
+            await fetch('/auth/logout');
+            window.location.href = '/';
+        }
+
+        // Refresh every 30s
+        setInterval(loadStats, 30000);
+    </script>
 </body>
 </html>
