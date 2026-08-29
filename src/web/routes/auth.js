@@ -1,6 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const User = require('../../database/models/User');
+
+// Wait for DB to be ready
+async function waitForDb(maxWaitMs = 20000) {
+    const start = Date.now();
+    while (mongoose.connection.readyState !== 1) {
+        if (Date.now() - start > maxWaitMs) {
+            throw new Error('Database connection timeout');
+        }
+        await new Promise(r => setTimeout(r, 200));
+    }
+}
 
 // Login page redirect
 router.get('/login', (req, res) => {
@@ -35,6 +47,9 @@ router.get('/callback', async (req, res) => {
     try {
         const clientId = process.env.CLIENT_ID;
         const clientSecret = process.env.CLIENT_SECRET;
+
+        // Wait for database connection
+        await waitForDb();
 
         if (!clientId || !/^\d{17,20}$/.test(clientId)) {
             return res.redirect('/?error=invalid_client_id');

@@ -7,10 +7,18 @@ class Database {
 
     async connect(uri) {
         try {
+            // Ensure we don't try to reconnect if already connected
+            if (mongoose.connection.readyState === 1) {
+                console.log('✅ MongoDB already connected');
+                return mongoose.connection;
+            }
+
             await mongoose.connect(uri, {
                 maxPoolSize: 10,
-                serverSelectionTimeoutMS: 10000,
+                serverSelectionTimeoutMS: 15000,
                 socketTimeoutMS: 45000,
+                connectTimeoutMS: 15000,
+                waitQueueTimeoutMS: 30000,
             });
 
             this.connection = mongoose.connection;
