@@ -30,42 +30,7 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
-            // ✅ التحقق من وجود نظام مسبقاً
-            const existingGuild = await Guild.findOne({ guildId: interaction.guild.id });
-
-            if (existingGuild && existingGuild.settings?.ticketCategoryId) {
-                // التحقق من أن القنوات لا تزال موجودة
-                const existingCategory = interaction.guild.channels.cache.get(existingGuild.settings.ticketCategoryId);
-                const existingPanel = existingGuild.settings.panelChannelId
-                    ? interaction.guild.channels.cache.get(existingGuild.settings.panelChannelId)
-                    : null;
-
-                if (existingCategory && existingPanel) {
-                    return interaction.editReply({
-                        embeds: [
-                            new EmbedBuilder()
-                                .setColor(0xFEE75C)
-                                .setTitle('⚠️ النظام مُعد مسبقاً!')
-                                .setDescription(`
-╭─**📋 النظام موجود بالفعل**─╮
-│
-│ 📁 القسم: ${existingCategory}
-│ 🎫 اللوحة: ${existingPanel}
-│ 📊 السجلات: ${existingGuild.settings.logChannelId ? `<#${existingGuild.settings.logChannelId}>` : '❌ محذوفة'}
-│
-╰───────────────────────────╯
-
-**💡 الخيارات المتاحة:**
-> 🔄 استخدم \`/panel\` لإعادة إرسال اللوحة
-> 🗑️ احذف القسم يدوياً ثم أعد \`/setup\`
-                                `)
-                                .setFooter({ text: 'ALQUEEN Ticket System' })
-                        ]
-                    });
-                }
-            }
-
-            // إنشاء القسم
+            // إنشاء القسم مباشرة بدون فحص DB
             const category = await interaction.guild.channels.create({
                 name: `🎫・${categoryName}`,
                 type: ChannelType.GuildCategory,
@@ -77,7 +42,6 @@ module.exports = {
                 ]
             });
 
-            // القنوات
             const transcriptChannel = await interaction.guild.channels.create({
                 name: '📝・transcripts',
                 type: ChannelType.GuildText,
@@ -136,7 +100,7 @@ module.exports = {
                 } catch (e) {}
             }
 
-            // حفظ في قاعدة البيانات (بدون انتظار)
+            // حفظ في قاعدة البيانات (background, no await)
             Guild.findOneAndUpdate(
                 { guildId: interaction.guild.id },
                 {
@@ -149,9 +113,8 @@ module.exports = {
                     'settings.panelChannelId': panelChannel.id,
                     'settings.supportRoleId': supportRole?.id
                 },
-                { upsert: true, new: true }
+                { upsert: true, new: true, maxTimeMS: 5000 }
             ).catch(err => console.error('DB save error:', err.message));
-
 
             // Embed احترافي
             const panelEmbed = new EmbedBuilder()

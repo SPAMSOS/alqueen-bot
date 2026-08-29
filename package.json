@@ -12,22 +12,27 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["discord", "bot", "ticket", "support"],
+  "keywords": [
+    "discord",
+    "bot",
+    "ticket",
+    "support"
+  ],
   "author": "ALQUEEN",
   "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.14.1",
-    "discord-api-types": "^0.37.97",
-    "express": "^4.18.2",
-    "mongoose": "^8.0.3",
-    "dotenv": "^16.3.1",
-    "cors": "^2.8.5",
-    "socket.io": "^4.7.2",
     "axios": "^1.6.2",
-    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "discord-api-types": "^0.37.97",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
     "express-session": "^1.17.3",
     "helmet": "^7.1.0",
-    "express-rate-limit": "^7.1.5"
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.24.4",
+    "socket.io": "^4.7.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
