@@ -62,7 +62,7 @@ async function handleSubjectModal(interaction, client, customId) {
             ]
         });
 
-        // Save ticket to database
+        // Save ticket to database (non-blocking)
         const ticket = new Ticket({
             ticketId: `T-${ticketNumber}`,
             guildId: interaction.guildId,
@@ -84,13 +84,13 @@ async function handleSubjectModal(interaction, client, customId) {
             }
         });
 
-        await ticket.save();
+        ticket.save().catch(err => console.error('Ticket save:', err.message));
 
-        // Update guild stats
+        // Update guild stats (non-blocking)
         if (guildData) {
             guildData.stats.totalTickets += 1;
             guildData.stats.openTickets += 1;
-            await guildData.save();
+            guildData.save().catch(err => console.error('Guild save:', err.message));
         }
 
         // Create welcome embed

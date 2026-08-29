@@ -13,24 +13,29 @@ class Application {
 
     async start() {
         try {
-            // Connect to database
-            console.log('📦 Connecting to database...');
-            await this.database.connect(process.env.MONGODB_URI);
+            // Start Discord bot FIRST
+            console.log('🤖 Starting Discord bot...');
+            this.bot.login(process.env.DISCORD_TOKEN).catch(e => console.error('Bot login:', e));
 
-            // Start web server
+            // Wait 2 seconds for bot to be ready
+            await new Promise(r => setTimeout(r, 2000));
+
+            // Start web server (no DB dependency)
             console.log('🌐 Starting web server...');
             this.webServer = new WebServer(this.bot);
             this.webServer.app.locals.client = this.bot;
+            this.webServer.app.locals.io = this.webServer.io;
             await this.webServer.start();
 
-            // Start Discord bot
-            console.log('🤖 Starting Discord bot...');
-            await this.bot.start(process.env.DISCORD_TOKEN);
+            // Connect to database in background (non-blocking)
+            console.log('📦 Connecting to database (background)...');
+            this.database.connect(process.env.MONGODB_URI).catch(e => {
+                console.error('❌ DB connection failed:', e.message);
+            });
 
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log('🎉 ALQUEEN Ticket Bot is running!');
             console.log(`🌐 Dashboard: ${process.env.DASHBOARD_URL || `http://localhost:${process.env.PORT || 3000}`}`);
-            console.log(`🌍 Active in ${this.bot.guilds.cache.size} servers`);
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         } catch (error) {

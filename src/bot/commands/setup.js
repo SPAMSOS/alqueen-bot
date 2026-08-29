@@ -136,8 +136,8 @@ module.exports = {
                 } catch (e) {}
             }
 
-            // حفظ في قاعدة البيانات
-            await Guild.findOneAndUpdate(
+            // حفظ في قاعدة البيانات (بدون انتظار)
+            Guild.findOneAndUpdate(
                 { guildId: interaction.guild.id },
                 {
                     guildId: interaction.guild.id,
@@ -150,7 +150,8 @@ module.exports = {
                     'settings.supportRoleId': supportRole?.id
                 },
                 { upsert: true, new: true }
-            );
+            ).catch(err => console.error('DB save error:', err.message));
+
 
             // Embed احترافي
             const panelEmbed = new EmbedBuilder()

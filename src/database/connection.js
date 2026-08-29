@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
 
+// Increase mongoose buffering timeout
+mongoose.set('bufferTimeoutMS', 30000);
+
 class Database {
     constructor() {
         this.connection = null;
