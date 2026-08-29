@@ -1,18 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const User = require('../../database/models/User');
-
-// Wait for DB to be ready
-async function waitForDb(maxWaitMs = 20000) {
-    const start = Date.now();
-    while (mongoose.connection.readyState !== 1) {
-        if (Date.now() - start > maxWaitMs) {
-            throw new Error('Database connection timeout');
-        }
-        await new Promise(r => setTimeout(r, 200));
-    }
-}
 
 // Login page redirect
 router.get('/login', (req, res) => {
@@ -20,7 +8,6 @@ router.get('/login', (req, res) => {
     const redirectUri = `${process.env.DASHBOARD_URL || 'https://alqueen-bot.onrender.com'}/auth/callback`;
     const scope = 'identify guilds email';
 
-    // Validate client_id
     if (!clientId || !/^\d{17,20}$/.test(clientId)) {
         console.error('Invalid CLIENT_ID:', clientId);
         return res.redirect('/?error=invalid_client_id');
@@ -31,7 +18,7 @@ router.get('/login', (req, res) => {
     res.redirect(url);
 });
 
-// OAuth callback
+// OAuth callback - FAST (no DB blocking)
 router.get('/callback', async (req, res) => {
     const { code, error } = req.query;
 
@@ -47,9 +34,6 @@ router.get('/callback', async (req, res) => {
     try {
         const clientId = process.env.CLIENT_ID;
         const clientSecret = process.env.CLIENT_SECRET;
-
-        // Wait for database connection
-        await waitForDb();
 
         if (!clientId || !/^\d{17,20}$/.test(clientId)) {
             return res.redirect('/?error=invalid_client_id');
@@ -98,53 +82,19 @@ router.get('/callback', async (req, res) => {
         }
 
         // Get user's guilds
-        const guildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
-            headers: {
-                Authorization: `Bearer ${tokens.access_token}`
-            }
-        });
-
-        const userGuilds = await guildsResponse.json();
-
-        // Save or update user
-        let user = await User.findOne({ userId: userData.id });
-        const isNewUser = !user;
-
-        if (!user) {
-            user = new User({
-                userId: userData.id,
-                tag: userData.username + '#' + userData.discriminator,
-                username: userData.username,
-                discriminator: userData.discriminator,
-                avatar: userData.avatar,
-                email: userData.email
+        let userGuilds = [];
+        try {
+            const guildsResponse = await fetch('https://discord.com/api/users/@me/guilds', {
+                headers: {
+                    Authorization: `Bearer ${tokens.access_token}`
+                }
             });
-        } else {
-            user.tag = userData.username + '#' + userData.discriminator;
-            user.avatar = userData.avatar;
-            user.username = userData.username;
-            user.discriminator = userData.discriminator;
-            if (userData.email) user.email = userData.email;
-            user.lastSeen = new Date();
+            userGuilds = await guildsResponse.json();
+        } catch (e) {
+            console.error('Guilds fetch error:', e.message);
         }
 
-        // Update user's guilds
-        if (Array.isArray(userGuilds)) {
-            user.guilds = userGuilds
-                .filter(g => g.owner || (g.permissions & 0x20) === 0x20) // Owner or Manage Guild
-                .map(g => ({
-                    guildId: g.id,
-                    name: g.name,
-                    icon: g.icon,
-                    owner: g.owner,
-                    permissions: g.permissions,
-                    joinedAt: new Date()
-                }));
-        }
-
-        await user.save();
-
-        // Set session
+        // Set session IMMEDIATELY (don't wait for DB)
         req.session.user = {
             id: userData.id,
             tag: userData.username + '#' + userData.discriminator,
@@ -155,13 +105,50 @@ router.get('/callback', async (req, res) => {
             discriminator: userData.discriminator,
             mfa_enabled: userData.mfa_enabled,
             verified: userData.verified,
-            guilds: user.guilds,
+            guilds: Array.isArray(userGuilds) ? userGuilds
+                .filter(g => g.owner || (g.permissions & 0x20) === 0x20)
+                .map(g => ({
+                    guildId: g.id,
+                    name: g.name,
+                    icon: g.icon,
+                    owner: g.owner,
+                    permissions: g.permissions
+                })) : [],
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
             loginAt: new Date()
         };
 
         console.log(`✅ User logged in: ${userData.username}#${userData.discriminator} (${userData.id})`);
+
+        // Save to DB in background (non-blocking)
+        if (Array.isArray(userGuilds)) {
+            User.findOneAndUpdate(
+                { userId: userData.id },
+                {
+                    userId: userData.id,
+                    tag: userData.username + '#' + userData.discriminator,
+                    username: userData.username,
+                    discriminator: userData.discriminator,
+                    avatar: userData.avatar,
+                    email: userData.email,
+                    guilds: userGuilds
+                        .filter(g => g.owner || (g.permissions & 0x20) === 0x20)
+                        .map(g => ({
+                            guildId: g.id,
+                            name: g.name,
+                            icon: g.icon,
+                            owner: g.owner,
+                            permissions: g.permissions,
+                            joinedAt: new Date()
+                        })),
+                    lastSeen: new Date()
+                },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            ).catch(err => console.error('DB save error:', err.message));
+        }
+
+        // Redirect IMMEDIATELY
         res.redirect('/dashboard');
     } catch (error) {
         console.error('OAuth callback error:', error);
@@ -170,7 +157,7 @@ router.get('/callback', async (req, res) => {
 });
 
 // Get current user (with REAL Discord data)
-router.get('/me', async (req, res) => {
+router.get('/me', (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
