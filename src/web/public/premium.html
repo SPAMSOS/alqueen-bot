@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الترقية إلى بريميوم - ALQUEEN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .premium-hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 24px;
+        }
+
+        .premium-content {
+            max-width: 900px;
+            text-align: center;
+        }
+
+        .premium-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, rgba(250, 166, 26, 0.2), rgba(245, 158, 11, 0.2));
+            border: 1px solid rgba(250, 166, 26, 0.3);
+            padding: 8px 20px;
+            border-radius: var(--radius-full);
+            color: var(--accent-warning);
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .premium-title {
+            font-size: 56px;
+            font-weight: 900;
+            margin-bottom: 24px;
+        }
+
+        .premium-subtitle {
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 60px;
+            line-height: 1.6;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        .premium-feature {
+            background: var(--bg-card);
+            padding: 32px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .premium-feature:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-warning);
+            box-shadow: 0 0 30px rgba(250, 166, 26, 0.2);
+        }
+
+        .premium-feature-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .premium-feature h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .premium-feature p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .cta-section {
+            margin-top: 40px;
+        }
+
+        .cta-price {
+            font-size: 64px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cta-price span {
+            font-size: 24px;
+            font-weight: 400;
+        }
+
+        @media (max-width: 768px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .premium-title {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <span class="logo-icon">🎫</span>
+                <span class="logo-text">ALQUEEN</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/">الرئيسية</a></li>
+                <li><a href="/dashboard">لوحة التحكم</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="premium-hero">
+        <div class="premium-content">
+            <div class="premium-badge">
+                <span>⭐</span>
+                <span>بريميوم</span>
+            </div>
+
+            <h1 class="premium-title">
+                <span class="gradient-text">ارتقِ</span> بسيرفرك إلى المستوى التالي
+            </h1>
+
+            <p class="premium-subtitle">
+                احصل على جميع المميزات المتقدمة وأطلق العنان لإمكانات سيرفرك مع اشتراك ALQUEEN Premium
+            </p>
+
+            <div class="features-grid">
+                <div class="premium-feature">
+                    <div class="premium-feature-icon">🚀</div>
+                    <h3>سرعة فائقة</h3>
+                    <p>أولوية في المعالجة والاستجابة</p>
+                </div>
+                <div class="premium-feature">
+                    <div class="premium-feature-icon">📊</div>
+                    <h3>تحليلات متقدمة</h3>
+                    <p>تقارير مفصلة ورسوم بيانية حية</p>
+                </div>
+                <div class="premium-feature">
+                    <div class="premium-feature-icon">🎨</div>
+                    <h3>تخصيص كامل</h3>
+                    <p>ألوان، شعارات، رسائل مخصصة</p>
+                </div>
+                <div class="premium-feature">
+                    <div class="premium-feature-icon">🔄</div>
+                    <h3>ردود تلقائية</h3>
+                    <p>AI للرد على الأسئلة الشائعة</p>
+                </div>
+                <div class="premium-feature">
+                    <div class="premium-feature-icon">📝</div>
+                    <h3>نماذج تكت</h3>
+                    <p>نماذج مخصصة لكل فئة</p>
+                </div>
+                <div class="premium-feature">
+                    <div class="premium-feature-icon">🎯</div>
+                    <h3>أولوية الدعم</h3>
+                    <p>دعم فني متواصل 24/7</p>
+                </div>
+            </div>
+
+            <div class="cta-section">
+                <div class="cta-price">$5<span>/شهرياً</span></div>
+                <a href="/auth/login" class="btn btn-primary" style="margin-top: 24px; padding: 16px 48px; font-size: 18px;">
+                    <span>⭐</span> اشترك الآن
+                </a>
+                <p style="color: var(--text-muted); margin-top: 16px; font-size: 14px;">
+                    إلغاء في أي وقت • ضمان استرداد 30 يوم
+                </p>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

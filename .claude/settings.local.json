@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /mnt/c/)",
+      "Read(//mnt/**)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -Command \"Get-PSDrive | Select-Object Name,Used,Free\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File /tmp/clean_scan.ps1)",
+      "Bash(powershell.exe -Command '\\(Get-ItemProperty \"HKLM:\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Uninstall\\\\*\" -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match \"MathWorks|MATLAB\" }\\) | Format-List DisplayName, UninstallString, EstimatedSize, InstallLocation')",
+      "Bash(powershell.exe -Command '$paths = @\\(\"$env:LOCALAPPDATA\\\\Google\\\\Chrome\\\\User Data\", \"$env:APPDATA\\\\Google\\\\Chrome\"\\); foreach \\($p in $paths\\) { if \\(Test-Path $p\\) { Write-Host \"$p exists\"; $files = Get-ChildItem $p -Directory -Force | Where-Object { $_.Name -notmatch \"Local State|Preferences\" } | Select-Object Name; Write-Host \"  Subfolders:\" $files.Name } else { Write-Host \"$p NOT FOUND\" } }')",
+      "Bash(ls -la \"/c/Users/moe/AppData/Local/Google/Chrome/\" 2>/dev/null | head -10 && echo \"---D:\" && ls -la \"/d/Chrome-Profile\" 2>/dev/null | head -5)",
+      "Read(//d/Chrome-Profile/**)",
+      "Bash(ls -la \"/c/Program Files \\(x86\\)/Roblox/\" 2>/dev/null | head -10 && echo \"---\" && ls -la \"/d/HitPaw/\" 2>/dev/null | head -5)",
+      "Read(//c/Program Files \\\\\\(x86\\\\\\)/**)",
+      "Read(//d//**)",
+      "Bash(cat)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File 'C:/Users/moe/uninstall_programs.ps1')"
+    ]
+  }
+}

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - ALQUEEN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <span>🎫</span>
+                    <span>ALQUEEN</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">عام</div>
+                    <a class="nav-item active" data-page="overview">
+                        <span class="nav-item-icon">📊</span>
+                        <span>نظرة عامة</span>
+                    </a>
+                    <a class="nav-item" data-page="servers">
+                        <span class="nav-item-icon">🖥️</span>
+                        <span>السيرفرات</span>
+                    </a>
+                    <a class="nav-item" data-page="tickets">
+                        <span class="nav-item-icon">🎫</span>
+                        <span>التكتات</span>
+                        <span class="nav-item-badge" id="openTicketsBadge">0</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">إدارة</div>
+                    <a class="nav-item" data-page="settings">
+                        <span class="nav-item-icon">⚙️</span>
+                        <span>الإعدادات</span>
+                    </a>
+                    <a class="nav-item" data-page="analytics">
+                        <span class="nav-item-icon">📈</span>
+                        <span>التحليلات</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">الملف الشخصي</div>
+                    <a class="nav-item" href="/auth/logout">
+                        <span class="nav-item-icon">🚪</span>
+                        <span>تسجيل الخروج</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1>لوحة التحكم</h1>
+                    <p>مرحباً بك في لوحة تحكم ALQUEEN</p>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <input type="text" placeholder="ابحث عن تكت أو مستخدم..." id="searchInput">
+                    </div>
+                    <div class="user-menu">
+                        <div class="user-avatar" id="userAvatar">U</div>
+                        <span id="userName">User</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-icon blue">🎫</div>
+                        <div class="stat-trend up">+12%</div>
+                    </div>
+                    <h3 id="totalTickets">0</h3>
+                    <p>إجمالي التكتات</p>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-icon green">🟢</div>
+                        <div class="stat-trend up">+5</div>
+                    </div>
+                    <h3 id="openTicketsCount">0</h3>
+                    <p>التكتات المفتوحة</p>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-icon red">🔴</div>
+                        <div class="stat-trend down">-8%</div>
+                    </div>
+                    <h3 id="closedTicketsCount">0</h3>
+                    <p>التكتات المغلقة</p>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <div class="stat-card-icon yellow">⭐</div>
+                    </div>
+                    <h3 id="avgRating">0.0</h3>
+                    <p>متوسط التقييم</p>
+                </div>
+            </div>
+
+            <!-- Tickets Table -->
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>آخر التكتات</h3>
+                    <div class="table-filters">
+                        <button class="filter-btn active" data-filter="all">الكل</button>
+                        <button class="filter-btn" data-filter="open">مفتوحة</button>
+                        <button class="filter-btn" data-filter="pending">قيد الانتظار</button>
+                        <button class="filter-btn" data-filter="closed">مغلقة</button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>رقم التكت</th>
+                                <th>المستخدم</th>
+                                <th>الموضوع</th>
+                                <th>الفئة</th>
+                                <th>الحالة</th>
+                                <th>التاريخ</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ticketsTable">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">🎫</div>
+                    <h3>لا توجد تكتات</h3>
+                    <p>لم يتم إنشاء أي تكتات بعد. التكتات ستظهر هنا عند إنشائها.</p>
+                </div>
+
+                <div class="pagination">
+                    <div class="pagination-info" id="paginationInfo">
+                        عرض 0 - 0 من 0
+                    </div>
+                    <div class="pagination-buttons">
+                        <button class="page-btn" id="prevPage" disabled>→</button>
+                        <button class="page-btn" id="nextPage" disabled>←</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

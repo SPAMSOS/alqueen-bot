@@ -1,0 +1,72 @@
+const mongoose = require('mongoose');
+
+const guildSchema = new mongoose.Schema({
+    guildId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    ownerId: {
+        type: String,
+        required: true
+    },
+    settings: {
+        prefix: { type: String, default: '!' },
+        language: { type: String, default: 'ar' },
+        ticketCategoryId: String,
+        logChannelId: String,
+        transcriptChannelId: String,
+        adminRoleId: String,
+        supportRoleId: String,
+        maxTicketsPerUser: { type: Number, default: 5 },
+        autoCloseDelay: { type: Number, default: 0 },
+        requireReason: { type: Boolean, default: true },
+        allowTranscript: { type: Boolean, default: true },
+        ratingEnabled: { type: Boolean, default: true },
+        welcomeMessage: String,
+        customTitle: String,
+        premium: {
+            enabled: { type: Boolean, default: false },
+            tier: { type: String, enum: ['free', 'basic', 'premium'], default: 'free' },
+            expiresAt: Date
+        }
+    },
+    ticketCategories: [{
+        name: String,
+        emoji: String,
+        description: String,
+        enabled: { type: Boolean, default: true },
+        customFields: [{
+            name: String,
+            type: { type: String, enum: ['text', 'number', 'select'] },
+            required: { type: Boolean, default: false },
+            options: [String]
+        }]
+    }],
+    stats: {
+        totalTickets: { type: Number, default: 0 },
+        openTickets: { type: Number, default: 0 },
+        closedTickets: { type: Number, default: 0 },
+        avgResponseTime: { type: Number, default: 0 },
+        satisfactionRate: { type: Number, default: 0 }
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+guildSchema.pre('save', function(next) {
+    this.updatedAt = Date.now();
+    next();
+});
+
+module.exports = mongoose.model('Guild', guildSchema);
