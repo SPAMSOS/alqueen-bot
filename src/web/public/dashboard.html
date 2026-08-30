@@ -1551,27 +1551,8 @@
             const emoji = btn.emoji || '🎫';
             const style = btn.style || 'Primary';
             return `
-                <div class="button-row" data-idx="${idx}" style="display: grid; grid-template-columns: 44px 1fr 110px 120px 36px; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 10px;">
-                    <div style="position: relative;">
-                        <button type="button" class="form-input btn-emoji" style="text-align: center; padding: 4px; cursor: pointer; font-size: 20px; background: var(--bg-elevated); border: 1px solid rgba(255,255,255,0.08); height: 38px; display: flex; align-items: center; justify-content: center;" onclick="openEmojiPicker(this)" title="اختر إيموجي">${formatEmojiDisplay(emoji)}</button>
-                        <div class="emoji-picker" style="display:none; position: absolute; top: 100%; left: 0; z-index: 1000; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; width: 320px; max-height: 360px; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.6);">
-                            <div style="margin-bottom: 8px;">
-                                <input type="text" class="form-input emoji-search" placeholder="🔍 ابحث عن إيموجي..." style="font-size: 13px; padding: 8px 12px; height: 36px;" oninput="filterEmojis(this)">
-                            </div>
-                            <div class="emoji-tabs" style="display: flex; gap: 4px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px;">
-                                <button type="button" class="emoji-tab active" data-tab="server" onclick="switchEmojiTab(this, 'server')" style="background: none; border: none; color: var(--accent); font-size: 12px; padding: 6px 12px; cursor: pointer; border-bottom: 2px solid var(--accent); font-weight: 700;">سيرفر</button>
-                                <button type="button" class="emoji-tab" data-tab="unicode" onclick="switchEmojiTab(this, 'unicode')" style="background: none; border: none; color: var(--text-muted); font-size: 12px; padding: 6px 12px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600;">يونيكود</button>
-                            </div>
-                            <div class="emoji-content" style="max-height: 220px; overflow-y: auto; padding: 2px;">
-                                <div class="emoji-server-list" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;"></div>
-                                <div class="emoji-unicode-list" style="display: none; grid-template-columns: repeat(8, 1fr); gap: 4px;"></div>
-                            </div>
-                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 6px;">
-                                <input type="text" class="form-input btn-emoji-custom" placeholder=":اسم_الإيموجي:" style="font-size: 12px; padding: 6px 10px; flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCustomEmoji(this);}">
-                                <button type="button" class="btn btn-sm btn-primary" style="padding: 6px 12px;" onclick="applyCustomEmoji(this)">تطبيق</button>
-                            </div>
-                        </div>
-                    </div>
+                <div class="button-row" data-idx="${idx}" style="display: grid; grid-template-columns: 44px 1fr 110px 120px 36px; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 10px; position: relative; z-index: 1;">
+                    <button type="button" class="form-input btn-emoji" data-emoji-value="${escapeHtml(emoji)}" style="text-align: center; padding: 4px; cursor: pointer; font-size: 20px; background: var(--bg-elevated); border: 1px solid rgba(255,255,255,0.08); height: 38px; display: flex; align-items: center; justify-content: center;" onclick="openEmojiPicker(this)" title="اختر إيموجي">${formatEmojiDisplay(emoji)}</button>
                     <input type="text" class="form-input btn-label" value="${escapeHtml(label)}" placeholder="اسم الزر (مثال: شراء)" maxlength="80" style="height: 38px;">
                     <input type="text" class="form-input btn-id" value="${escapeHtml(id)}" placeholder="ticket_id" style="font-size: 12px; height: 38px;">
                     <select class="form-select btn-style" style="padding: 6px 10px; height: 38px;">
@@ -1599,58 +1580,104 @@
         }
 
         async function openEmojiPicker(btn) {
-            // Close all other pickers
-            document.querySelectorAll('.emoji-picker').forEach(p => {
-                if (p !== btn.nextElementSibling) p.style.display = 'none';
-            });
-            const picker = btn.nextElementSibling;
-            const isOpen = picker.style.display === 'block';
-            picker.style.display = isOpen ? 'none' : 'block';
+            // Close existing picker
+            closeEmojiPicker();
 
-            if (!isOpen) {
-                // Load emojis on first open
-                const guildEmojis = await loadGuildEmojis(currentGuild.guildId);
-                const serverList = picker.querySelector('.emoji-server-list');
-                const unicodeList = picker.querySelector('.emoji-unicode-list');
+            // Load guild emojis
+            const guildEmojis = await loadGuildEmojis(currentGuild.guildId);
 
-                if (guildEmojis.length === 0) {
-                    serverList.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px;">لا توجد إيموجيات في السيرفر</div>';
-                } else {
-                    serverList.innerHTML = guildEmojis.map(e => `
-                        <button type="button" class="emoji-btn" data-name="${escapeHtml(e.name)}" data-formatted="${escapeHtml(e.formatted)}" data-search="${escapeHtml(e.name)}" title=":${escapeHtml(e.name)}:" style="background: var(--bg-elevated); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 36px;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'" onclick="selectEmojiByBtn(this)">
-                            <img src="${e.url}" style="width: 28px; height: 28px; object-fit: contain;" alt="${escapeHtml(e.name)}">
-                        </button>
-                    `).join('');
-                }
+            // Create backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'emoji-picker-backdrop';
+            backdrop.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9998; backdrop-filter: blur(2px);';
+            backdrop.onclick = closeEmojiPicker;
 
-                unicodeList.innerHTML = POPULAR_EMOJIS.map(e => `
-                    <button type="button" class="emoji-btn" data-formatted="${escapeHtml(e)}" data-search="${escapeHtml(e)}" title="${escapeHtml(e)}" style="background: var(--bg-elevated); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 4px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; height: 32px;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'" onclick="selectEmojiByBtn(this)">
-                        ${escapeHtml(e)}
-                    </button>
-                `).join('');
+            // Calculate position near the button
+            const rect = btn.getBoundingClientRect();
+            const picker = document.createElement('div');
+            picker.className = 'emoji-picker';
+            picker.style.cssText = `
+                position: fixed;
+                top: ${Math.min(rect.bottom + 8, window.innerHeight - 420)}px;
+                left: ${Math.max(10, Math.min(rect.left, window.innerWidth - 360))}px;
+                z-index: 9999;
+                background: #1e1e2a;
+                border: 1px solid rgba(255,255,255,0.15);
+                border-radius: 14px;
+                padding: 14px;
+                width: 340px;
+                max-height: 400px;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+                display: flex;
+                flex-direction: column;
+            `;
+
+            picker.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="margin: 0; font-size: 14px;">اختر إيموجي</h4>
+                    <button type="button" onclick="closeEmojiPicker()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 0 8px;">✕</button>
+                </div>
+                <input type="text" class="form-input emoji-search" placeholder="🔍 ابحث..." style="font-size: 13px; padding: 8px 12px; height: 36px; margin-bottom: 10px;" oninput="filterEmojis(this)">
+                <div class="emoji-tabs" style="display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                    <button type="button" class="emoji-tab active" data-tab="server" onclick="switchEmojiTab(this, 'server')" style="background: none; border: none; color: var(--accent); font-size: 12px; padding: 8px 14px; cursor: pointer; border-bottom: 2px solid var(--accent); font-weight: 700;">🎭 سيرفر (${guildEmojis.length})</button>
+                    <button type="button" class="emoji-tab" data-tab="unicode" onclick="switchEmojiTab(this, 'unicode')" style="background: none; border: none; color: var(--text-muted); font-size: 12px; padding: 8px 14px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600;">😀 يونيكود</button>
+                </div>
+                <div class="emoji-content" style="flex: 1; overflow-y: auto; padding: 4px; min-height: 200px;">
+                    <div class="emoji-server-list" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;">
+                        ${guildEmojis.length === 0 ? '<div style="grid-column: 1/-1; text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 12px;">لا توجد إيموجيات مخصصة في السيرفر.<br>أضف إيموجيات من إعدادات السيرفر في ديسكورد.</div>' : guildEmojis.map(e => `
+                            <button type="button" class="emoji-btn" data-formatted="${escapeHtml(e.formatted)}" data-search="${escapeHtml(e.name)}" title=":${escapeHtml(e.name)}:" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 42px; transition: all 0.15s;" onmouseover="this.style.background='rgba(88,101,242,0.2)';this.style.borderColor='var(--accent)';" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.borderColor='rgba(255,255,255,0.08)';" onclick="selectEmojiByBtn(this)">
+                                <img src="${e.url}" style="width: 32px; height: 32px; object-fit: contain;" alt="${escapeHtml(e.name)}">
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div class="emoji-unicode-list" style="display: none; grid-template-columns: repeat(8, 1fr); gap: 4px;">
+                        ${POPULAR_EMOJIS.map(e => `
+                            <button type="button" class="emoji-btn" data-formatted="${escapeHtml(e)}" data-search="${escapeHtml(e)}" title="${escapeHtml(e)}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; height: 38px; transition: all 0.15s;" onmouseover="this.style.background='rgba(88,101,242,0.2)';this.style.borderColor='var(--accent)';" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.borderColor='rgba(255,255,255,0.08)';" onclick="selectEmojiByBtn(this)">
+                                ${escapeHtml(e)}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 6px;">
+                    <input type="text" class="form-input btn-emoji-custom" placeholder="أو اكتب :اسم_الإيموجي:" style="font-size: 12px; padding: 8px 12px; flex: 1; height: 36px;" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCustomEmoji(this);}">
+                    <button type="button" class="btn btn-sm btn-primary" style="padding: 8px 14px; height: 36px;" onclick="applyCustomEmoji(this)">تطبيق</button>
+                </div>
+            `;
+
+            document.body.appendChild(backdrop);
+            document.body.appendChild(picker);
+
+            // Store target button
+            picker.dataset.targetBtn = btn.dataset.idx || '';
+            window._emojiTargetBtn = btn;
+            window._emojiPicker = picker;
+            window._emojiBackdrop = backdrop;
+
+            // Stop propagation
+            picker.onclick = e => e.stopPropagation();
+        }
+
+        function closeEmojiPicker() {
+            if (window._emojiPicker) {
+                window._emojiPicker.remove();
+                window._emojiPicker = null;
             }
-
-            // Close on outside click
-            setTimeout(() => {
-                const closeFn = (e) => {
-                    if (!picker.contains(e.target) && !btn.contains(e.target)) {
-                        picker.style.display = 'none';
-                        document.removeEventListener('click', closeFn);
-                    }
-                };
-                document.addEventListener('click', closeFn);
-            }, 0);
+            if (window._emojiBackdrop) {
+                window._emojiBackdrop.remove();
+                window._emojiBackdrop = null;
+            }
+            window._emojiTargetBtn = null;
         }
 
         function selectEmojiByBtn(emojiBtn) {
             const formatted = emojiBtn.dataset.formatted;
-            const row = emojiBtn.closest('.button-row');
-            const mainInput = row.querySelector('.btn-emoji');
+            const btn = window._emojiTargetBtn;
+            if (!btn) return;
             // Render preview
-            mainInput.innerHTML = formatEmojiDisplay(formatted);
-            mainInput.dataset.value = formatted;
-            // Store the actual value in a hidden way via the dataset
-            emojiBtn.closest('.emoji-picker').style.display = 'none';
+            btn.innerHTML = formatEmojiDisplay(formatted);
+            btn.dataset.emojiValue = formatted;
+            closeEmojiPicker();
         }
 
         function filterEmojis(searchInput) {
@@ -1700,14 +1727,14 @@
         }
 
         function applyCustomEmoji(btn) {
-            const row = btn.closest('.button-row');
-            const customInput = row.querySelector('.btn-emoji-custom');
-            const mainInput = row.querySelector('.btn-emoji');
+            const customInput = btn.parentElement.querySelector('.btn-emoji-custom');
             const val = customInput.value.trim();
             if (!val) return;
-            mainInput.innerHTML = formatEmojiDisplay(val);
-            mainInput.dataset.value = val;
-            btn.closest('.emoji-picker').style.display = 'none';
+            const targetBtn = window._emojiTargetBtn;
+            if (!targetBtn) return;
+            targetBtn.innerHTML = formatEmojiDisplay(val);
+            targetBtn.dataset.emojiValue = val;
+            closeEmojiPicker();
         }
 
         function addButton() {
@@ -1735,8 +1762,8 @@
             const rows = document.querySelectorAll('#buttonsList .button-row');
             return Array.from(rows).map((row, i) => {
                 const emojiBtn = row.querySelector('.btn-emoji');
-                // Get value from dataset (set when emoji selected) or from data-formatted attribute on emoji-btn that was clicked
-                let emoji = emojiBtn?.dataset.value || emojiBtn?.getAttribute('data-formatted') || '🎫';
+                // Get value from data-emoji-value attribute (set when emoji selected via modal)
+                let emoji = emojiBtn?.dataset.emojiValue || emojiBtn?.getAttribute('data-emoji-value') || '🎫';
                 // If empty dataset, try to extract from inner HTML
                 if (!emoji || emoji === '🎫') {
                     const img = emojiBtn?.querySelector('img');
