@@ -93,16 +93,21 @@ async function handleSubjectModal(interaction, client, customId) {
             guildData.save().catch(err => console.error('Guild save:', err.message));
         }
 
-        // Create welcome embed
+        // Create welcome embed - styled like the example image
         const welcomeEmbed = new EmbedBuilder()
             .setColor(categoryData.color)
-            .setTitle(`${categoryData.emoji} ${categoryData.name}`)
+            .setTitle('اهلا')
             .setDescription(`
-**${subject}**
+**مرحباً بك في الدعم**
 
-${description}
+يرجى اختيار نوع التذكرة
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
+**الموضوع:** ${subject}
+
+**الوصف:**
+${description}
+
 **معلومات التكت:**
 > 🆔 رقم التكت: \`T-${ticketNumber}\`
 > 👤 أنشأ بواسطة: ${interaction.user}
@@ -113,6 +118,14 @@ ${description}
             `)
             .setFooter({ text: 'ALQUEEN Ticket System' })
             .setTimestamp();
+
+        // Use panel banner image if set
+        if (guildData?.panelSettings?.image) {
+            welcomeEmbed.setImage(guildData.panelSettings.image);
+        }
+        if (guildData?.panelSettings?.thumbnail) {
+            welcomeEmbed.setThumbnail(guildData.panelSettings.thumbnail);
+        }
 
         // Action buttons
         const buttons = new ActionRowBuilder()
@@ -131,8 +144,14 @@ ${description}
                     .setStyle(ButtonStyle.Secondary)
             );
 
+        const supportRole = interaction.guild.roles.cache.find(r =>
+            r.name.toLowerCase().includes('support') ||
+            r.name.includes('دعم') ||
+            r.name.includes('الدعم')
+        );
+
         await channel.send({
-            content: `${interaction.user} ${interaction.guild.roles.cache.find(r => r.name.toLowerCase().includes('support') || r.name.toLowerCase().includes('دعم')) || ''}`,
+            content: `${interaction.user}${supportRole ? ` | <@&${supportRole.id}>` : ''}`,
             embeds: [welcomeEmbed],
             components: [buttons]
         });

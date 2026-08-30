@@ -1104,7 +1104,7 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">اللون (Hex)</label>
+                            <label class="form-label">اللون</label>
                             <input type="color" class="form-input" id="panelColor" value="#5865F2">
                         </div>
                         <div class="form-group">
@@ -1112,8 +1112,23 @@
                             <input type="text" class="form-input" id="panelFooter" placeholder="ALQUEEN Ticket System">
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">🎨 تحديث اللوحة</button>
-                    <button type="button" class="btn btn-success" onclick="resendPanel()">📤 إعادة إرسال اللوحة</button>
+                    <div class="form-group">
+                        <label class="form-label">رابط صورة كبيرة (Banner) - اختياري</label>
+                        <input type="url" class="form-input" id="panelImage" placeholder="https://i.imgur.com/example.png (يدعم GIF متحركة)">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">رابط صورة صغيرة (Thumbnail) - اختياري</label>
+                        <input type="url" class="form-input" id="panelThumbnail" placeholder="https://i.imgur.com/example.png">
+                    </div>
+
+                    <h3 style="margin: 20px 0 10px; font-size: 16px;">🎛️ أزرار التكت (حتى 5)</h3>
+                    <div id="buttonsList"></div>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="addButton()" style="margin-top: 8px;">➕ إضافة زر</button>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="submit" class="btn btn-primary">🔄 تحديث في ديسكورد</button>
+                        <button type="button" class="btn btn-success" onclick="resendPanel(false)">📤 إرسال لوحة جديدة</button>
+                    </div>
                 </form>
             </div>
         </main>
@@ -1400,14 +1415,84 @@
             try {
                 const res = await fetch(`/api/guilds/${guildId}/panel`);
                 const { data } = await res.json();
-                const embed = data?.message?.embeds?.[0] || {};
-                document.getElementById('panelTitle').value = embed.title || '';
-                document.getElementById('panelDescription').value = embed.description || '';
-                document.getElementById('panelColor').value = embed.color ? '#' + embed.color.toString(16).padStart(6, '0') : '#5865F2';
-                document.getElementById('panelFooter').value = embed.footer?.text || '';
+                const ps = data?.panelSettings || {};
+                document.getElementById('panelTitle').value = ps.title || '';
+                document.getElementById('panelDescription').value = ps.description || '';
+                document.getElementById('panelColor').value = ps.color ? '#' + ps.color.replace('#','') : '#5865F2';
+                document.getElementById('panelFooter').value = ps.footer || '';
+                document.getElementById('panelImage').value = ps.image || '';
+                document.getElementById('panelThumbnail').value = ps.thumbnail || '';
+                renderButtons(ps.buttons || []);
             } catch (e) {
                 console.error('Load panel:', e);
             }
+        }
+
+        function renderButtons(buttons) {
+            const list = document.getElementById('buttonsList');
+            if (!buttons.length) {
+                list.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">لا توجد أزرار. أضف زر جديد.</p>';
+                return;
+            }
+            list.innerHTML = buttons.map((btn, i) => `
+                <div class="button-row" data-idx="${i}" style="display: grid; grid-template-columns: 40px 1fr 100px 110px 32px; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;">
+                    <input type="text" class="form-input btn-emoji" value="${escapeHtml(btn.emoji || '🎫')}" placeholder="🎫" maxlength="4" style="text-align: center; padding: 6px;">
+                    <input type="text" class="form-input btn-label" value="${escapeHtml(btn.label || '')}" placeholder="اسم الزر (مثال: شراء)" maxlength="80">
+                    <input type="text" class="form-input btn-id" value="${escapeHtml(btn.id || '')}" placeholder="ticket_id" style="font-size: 12px;">
+                    <select class="form-select btn-style" style="padding: 6px;">
+                        <option value="Primary" ${btn.style === 'Primary' ? 'selected' : ''}>🔵 أزرق</option>
+                        <option value="Secondary" ${btn.style === 'Secondary' ? 'selected' : ''}>⚪ رمادي</option>
+                        <option value="Success" ${btn.style === 'Success' ? 'selected' : ''}>🟢 أخضر</option>
+                        <option value="Danger" ${btn.style === 'Danger' ? 'selected' : ''}>🔴 أحمر</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeButton(${i})" style="padding: 6px 10px;">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function addButton() {
+            const list = document.getElementById('buttonsList');
+            const current = list.querySelectorAll('.button-row').length;
+            if (current >= 5) {
+                toast('⚠️ الحد الأقصى 5 أزرار', 'error');
+                return;
+            }
+            const empty = list.querySelector('p');
+            if (empty) empty.remove();
+
+            const div = document.createElement('div');
+            div.className = 'button-row';
+            div.dataset.idx = current;
+            div.style.cssText = 'display: grid; grid-template-columns: 40px 1fr 100px 110px 32px; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;';
+            div.innerHTML = `
+                <input type="text" class="form-input btn-emoji" value="🎫" placeholder="🎫" maxlength="4" style="text-align: center; padding: 6px;">
+                <input type="text" class="form-input btn-label" placeholder="اسم الزر" maxlength="80">
+                <input type="text" class="form-input btn-id" value="ticket_${Date.now().toString(36)}" placeholder="ticket_id" style="font-size: 12px;">
+                <select class="form-select btn-style" style="padding: 6px;">
+                    <option value="Primary">🔵 أزرق</option>
+                    <option value="Secondary">⚪ رمادي</option>
+                    <option value="Success">🟢 أخضر</option>
+                    <option value="Danger">🔴 أحمر</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" style="padding: 6px 10px;">🗑️</button>
+            `;
+            list.appendChild(div);
+        }
+
+        function removeButton(idx) {
+            const row = document.querySelector(`.button-row[data-idx="${idx}"]`);
+            if (row) row.remove();
+        }
+
+        function collectButtons() {
+            const rows = document.querySelectorAll('#buttonsList .button-row');
+            return Array.from(rows).map((row, i) => ({
+                emoji: row.querySelector('.btn-emoji')?.value || '🎫',
+                label: row.querySelector('.btn-label')?.value || 'تكت',
+                id: row.querySelector('.btn-id')?.value || `ticket_${i}`,
+                style: row.querySelector('.btn-style')?.value || 'Primary',
+                order: i
+            })).filter(b => b.label && b.id);
         }
 
         async function closeTicket(ticketId) {
@@ -1482,28 +1567,61 @@
             document.getElementById('guildPanelForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (!currentGuild) return;
-                const color = parseInt(document.getElementById('panelColor').value.replace('#', ''), 16);
-                const embed = {
+                const color = document.getElementById('panelColor').value.replace('#', '');
+                const payload = {
                     title: document.getElementById('panelTitle').value,
                     description: document.getElementById('panelDescription').value,
                     color: color,
-                    footer: { text: document.getElementById('panelFooter').value }
+                    image: document.getElementById('panelImage').value || undefined,
+                    thumbnail: document.getElementById('panelThumbnail').value || undefined,
+                    footer: document.getElementById('panelFooter').value,
+                    buttons: collectButtons()
                 };
                 try {
                     const res = await fetch(`/api/guilds/${currentGuild.guildId}/panel`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ embeds: [embed] })
+                        body: JSON.stringify(payload)
                     });
                     if (res.ok) {
-                        toast('✅ تم تحديث اللوحة', 'success');
+                        toast('✅ تم تحديث اللوحة في ديسكورد', 'success');
                     } else {
-                        toast('❌ فشل التحديث', 'error');
+                        const err = await res.json().catch(() => ({}));
+                        toast('❌ فشل: ' + (err.error || 'خطأ'), 'error');
                     }
                 } catch (e) {
                     toast('❌ خطأ في الاتصال', 'error');
                 }
             });
+        }
+
+        async function resendPanel() {
+            if (!currentGuild) return;
+            const color = document.getElementById('panelColor').value.replace('#', '');
+            const payload = {
+                title: document.getElementById('panelTitle').value,
+                description: document.getElementById('panelDescription').value,
+                color: color,
+                image: document.getElementById('panelImage').value || undefined,
+                thumbnail: document.getElementById('panelThumbnail').value || undefined,
+                footer: document.getElementById('panelFooter').value,
+                buttons: collectButtons(),
+                sendNew: true
+            };
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/panel`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    toast('✅ تم إرسال لوحة جديدة', 'success');
+                } else {
+                    toast('❌ فشل الإرسال', 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ في الاتصال', 'error');
+            }
         }
 
         function setupNav() {

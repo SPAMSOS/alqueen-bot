@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField } = require('discord.js');
 const config = require('../../config/settings');
 const Guild = require('../../database/models/Guild');
+const { sendOrUpdatePanel, buildPanelEmbed, buildPanelButtons } = require('../utils/panelBuilder');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -116,66 +117,22 @@ module.exports = {
                 { upsert: true, new: true, maxTimeMS: 5000 }
             ).catch(err => console.error('DB save error:', err.message));
 
-            // Embed احترافي
-            const panelEmbed = new EmbedBuilder()
-                .setColor(0x5865F2)
-                .setAuthor({
-                    name: `🎫 ${interaction.guild.name} - نظام التكتات`,
-                    iconURL: interaction.guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL()
-                })
-                .setTitle('✨ نظام الدعم الفني الاحترافي ✨')
-                .setDescription(`
-╔═══════════════════════════════════╗
-║                                   ║
-║   **مرحباً بك في نظام التكتات**  ║
-║                                   ║
-╚═══════════════════════════════════╝
+            // Build panel from saved/custom settings (default for first setup)
+            const panelSettings = {
+                title: '✨ نظام الدعم الفني الاحترافي ✨',
+                description: 'اختر نوع طلبك من الأزرار أدناه',
+                color: '5865F2',
+                footer: '🎫 ALQUEEN Ticket System'
+            };
 
-> 🎫 **اختر نوع طلبك من الأزرار أدناه**
-
-**📋 الفئات المتاحة:**
-> 🛒 **مشاكل الشراء** - للإبلاغ عن مشاكل في المشتريات
-> 🔧 **مشاكل تقنية** - للمشاكل الفنية والإخطاء
-> 💡 **اقتراحات** - شاركنا أفكارك ومقترحاتك
-> 💬 **استفسار آخر** - لأي سؤال آخر
-
-**⚡ معلومات سريعة:**
-> 🕐 سرعة الرد: خلال 24 ساعة
-> 👥 فريق الدعم: متاح 24/7
-> 🔒 الخصوصية: محمية 100%
-> ⭐ التقييم: نسعد برأيك
-                `)
-                .setFooter({
-                    text: '🎫 ALQUEEN Ticket System',
-                    iconURL: client.user.displayAvatarURL({ dynamic: true })
-                })
-                .setTimestamp();
-
-            const row = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('ticket_purchase')
-                        .setLabel('🛒 شراء')
-                        .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId('ticket_technical')
-                        .setLabel('🔧 تقنية')
-                        .setStyle(ButtonStyle.Secondary),
-                    new ButtonBuilder()
-                        .setCustomId('ticket_suggestion')
-                        .setLabel('💡 اقتراح')
-                        .setStyle(ButtonStyle.Success),
-                    new ButtonBuilder()
-                        .setCustomId('ticket_other')
-                        .setLabel('💬 أخرى')
-                        .setStyle(ButtonStyle.Danger)
-                );
+            const panelEmbed = buildPanelEmbed(panelSettings, interaction.guild.name);
+            const panelRows = buildPanelButtons({});
 
             const mentionRole = supportRole ? `<@&${supportRole.id}>` : '';
             await panelChannel.send({
                 content: `## ✨ مرحباً - اختر تكت من الأزرار\n${mentionRole}`,
                 embeds: [panelEmbed],
-                components: [row]
+                components: panelRows
             });
 
             await interaction.editReply({

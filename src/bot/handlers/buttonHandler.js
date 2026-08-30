@@ -44,14 +44,32 @@ async function handleButton(interaction, client) {
 }
 
 async function handleTicketCreation(interaction, client, customId) {
-    const categoryMap = {
-        'ticket_purchase': { name: 'purchase', emoji: '🛒', label: 'مشاكل الشراء' },
-        'ticket_technical': { name: 'technical', emoji: '🔧', label: 'مشاكل تقنية' },
-        'ticket_suggestion': { name: 'suggestion', emoji: '💡', label: 'اقتراح' },
-        'ticket_other': { name: 'other', emoji: '💬', label: 'أخرى' }
-    };
+    // Try to find a custom button category from guild panel settings
+    let category = null;
+    try {
+        const guild = await Guild.findOne({ guildId: interaction.guildId }).maxTimeMS(3000);
+        if (guild?.panelSettings?.buttons?.length) {
+            const btn = guild.panelSettings.buttons.find(b => b.id === customId);
+            if (btn) {
+                category = {
+                    name: btn.id.replace(/^ticket_/, '') || 'custom',
+                    emoji: btn.emoji || '🎫',
+                    label: (btn.label || 'تكت').replace(/^[^\w]+/, '').trim() || 'تكت'
+                };
+            }
+        }
+    } catch (e) {}
 
-    const category = categoryMap[customId];
+    // Fallback to default categories
+    if (!category) {
+        const categoryMap = {
+            'ticket_purchase': { name: 'purchase', emoji: '🛒', label: 'مشاكل الشراء' },
+            'ticket_technical': { name: 'technical', emoji: '🔧', label: 'مشاكل تقنية' },
+            'ticket_suggestion': { name: 'suggestion', emoji: '💡', label: 'اقتراح' },
+            'ticket_other': { name: 'other', emoji: '💬', label: 'أخرى' }
+        };
+        category = categoryMap[customId];
+    }
     if (!category) return;
 
     // Check if user already has an open ticket

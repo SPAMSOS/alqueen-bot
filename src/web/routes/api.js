@@ -3,6 +3,7 @@ const router = express.Router();
 const Guild = require('../../database/models/Guild');
 const Ticket = require('../../database/models/Ticket');
 const TicketLog = require('../../database/models/TicketLog');
+const { sendOrUpdatePanel, DEFAULT_BUTTONS } = require('../../bot/utils/panelBuilder');
 
 // Bot stats
 router.get('/stats', async (req, res) => {
@@ -306,17 +307,21 @@ router.get('/guilds/:guildId/panel', async (req, res) => {
 
         const client = req.app.locals.client;
         const panelChannelId = guild.settings?.panelChannelId;
+        const panelMessageId = guild.panelMessageId;
         let panelMessage = null;
 
-        if (panelChannelId && client) {
+        if (panelChannelId && panelMessageId && client) {
             try {
                 const channel = await client.channels.fetch(panelChannelId);
-                if (channel && channel.lastMessage) {
-                    panelMessage = {
-                        id: channel.lastMessage.id,
-                        content: channel.lastMessage.content,
-                        embeds: channel.lastMessage.embeds?.map(e => e.toJSON())
-                    };
+                if (channel) {
+                    const msg = await channel.messages.fetch(panelMessageId).catch(() => null);
+                    if (msg) {
+                        panelMessage = {
+                            id: msg.id,
+                            content: msg.content,
+                            embeds: msg.embeds?.map(e => e.toJSON())
+                        };
+                    }
                 }
             } catch (e) {
                 console.error('Failed to fetch panel message:', e.message);
@@ -328,6 +333,13 @@ router.get('/guilds/:guildId/panel', async (req, res) => {
             data: {
                 channelId: panelChannelId,
                 message: panelMessage,
+                panelSettings: guild.panelSettings || {
+                    title: '✨ نظام الدعم الفني الاحترافي ✨',
+                    description: 'اختر نوع طلبك من الأزرار أدناه',
+                    color: '5865F2',
+                    footer: '🎫 ALQUEEN Ticket System',
+                    buttons: DEFAULT_BUTTONS
+                },
                 settings: guild.settings
             }
         });
@@ -336,11 +348,38 @@ router.get('/guilds/:guildId/panel', async (req, res) => {
     }
 });
 
-// Update guild panel (edit the Discord message)
+// Update guild panel settings (DB only)
+router.put('/guilds/:guildId/panel/settings', async (req, res) => {
+    try {
+        const { guildId } = req.params;
+        const { title, description, color, image, thumbnail, footer, buttons } = req.body;
+
+        const update = {};
+        if (title !== undefined) update['panelSettings.title'] = title;
+        if (description !== undefined) update['panelSettings.description'] = description;
+        if (color !== undefined) update['panelSettings.color'] = color;
+        if (image !== undefined) update['panelSettings.image'] = image;
+        if (thumbnail !== undefined) update['panelSettings.thumbnail'] = thumbnail;
+        if (footer !== undefined) update['panelSettings.footer'] = footer;
+        if (buttons !== undefined) update['panelSettings.buttons'] = buttons;
+
+        const guild = await Guild.findOneAndUpdate(
+            { guildId },
+            { $set: update },
+            { new: true, upsert: true }
+        );
+
+        res.json({ success: true, data: guild.panelSettings });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update guild panel (edit the Discord message + DB settings)
 router.put('/guilds/:guildId/panel', async (req, res) => {
     try {
         const { guildId } = req.params;
-        const { content, embeds } = req.body;
+        const { title, description, color, image, thumbnail, footer, buttons, sendNew } = req.body;
         const client = req.app.locals.client;
 
         if (!client) {
@@ -354,22 +393,56 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
 
         const panelChannelId = guild.settings?.panelChannelId;
         if (!panelChannelId) {
-            return res.status(404).json({ success: false, error: 'Panel channel not configured' });
+            return res.status(404).json({ success: false, error: 'Panel channel not configured. Run /setup first.' });
         }
 
-        // Fetch the channel and last message
+        // Update DB settings
+        const newPanelSettings = {
+            ...(guild.panelSettings || {}),
+            ...(title !== undefined && { title }),
+            ...(description !== undefined && { description }),
+            ...(color !== undefined && { color }),
+            ...(image !== undefined && { image }),
+            ...(thumbnail !== undefined && { thumbnail }),
+            ...(footer !== undefined && { footer }),
+            ...(buttons !== undefined && { buttons })
+        };
+
         const channel = await client.channels.fetch(panelChannelId);
-        if (!channel || !channel.lastMessage) {
-            return res.status(404).json({ success: false, error: 'Panel message not found' });
+        if (!channel) {
+            return res.status(404).json({ success: false, error: 'Panel channel not found' });
         }
 
-        // Edit the message
-        await channel.lastMessage.edit({
-            content: content || channel.lastMessage.content,
-            embeds: embeds || channel.lastMessage.embeds
-        });
+        let result;
+        if (sendNew) {
+            // Send new message
+            const { buildPanelEmbed, buildPanelButtons } = require('../../bot/utils/panelBuilder');
+            const embed = buildPanelEmbed(newPanelSettings, channel.guild.name);
+            const rows = buildPanelButtons(newPanelSettings);
+            const msg = await channel.send({ embeds: [embed], components: rows });
+            result = { message: msg, action: 'sent' };
+        } else {
+            // Update existing
+            result = await sendOrUpdatePanel(client, channel, newPanelSettings, channel.guild.name);
+        }
 
-        res.json({ success: true, message: 'Panel updated successfully' });
+        // Save to DB
+        await Guild.updateOne(
+            { guildId },
+            {
+                $set: {
+                    panelSettings: newPanelSettings,
+                    panelMessageId: result.message.id
+                }
+            }
+        );
+
+        res.json({
+            success: true,
+            action: result.action,
+            messageId: result.message.id,
+            data: newPanelSettings
+        });
     } catch (error) {
         console.error('Panel update error:', error);
         res.status(500).json({ success: false, error: error.message });

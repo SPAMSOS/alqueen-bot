@@ -47,6 +47,22 @@ const guildSchema = new mongoose.Schema({
             options: [String]
         }]
     }],
+    panelSettings: {
+        title: { type: String, default: '✨ نظام الدعم الفني الاحترافي ✨' },
+        description: { type: String, default: 'اختر نوع طلبك من الأزرار أدناه' },
+        color: { type: String, default: '5865F2' },
+        image: String,
+        thumbnail: String,
+        footer: { type: String, default: '🎫 ALQUEEN Ticket System' },
+        buttons: [{
+            id: String,
+            label: String,
+            emoji: String,
+            style: { type: String, enum: ['Primary', 'Secondary', 'Success', 'Danger'], default: 'Primary' },
+            order: { type: Number, default: 0 }
+        }]
+    },
+    panelMessageId: String,
     stats: {
         totalTickets: { type: Number, default: 0 },
         openTickets: { type: Number, default: 0 },
