@@ -378,6 +378,34 @@ router.get('/guilds/:guildId/panel', async (req, res) => {
     }
 });
 
+// Get guild's custom emojis
+router.get('/guilds/:guildId/emojis', async (req, res) => {
+    try {
+        const client = req.app.locals.client;
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not connected' });
+        }
+
+        const botGuild = client.guilds.cache.get(req.params.guildId);
+        if (!botGuild) {
+            return res.status(404).json({ success: false, error: 'البوت ليس في هذا السيرفر' });
+        }
+
+        const emojis = botGuild.emojis.cache.map(e => ({
+            id: e.id,
+            name: e.name,
+            animated: e.animated,
+            url: e.imageURL({ size: 64 }),
+            identifier: e.identifier, // e.g. "name" for <:name:id> or "name" for animated
+            formatted: e.animated ? `<a:${e.name}:${e.id}>` : `<:${e.name}:${e.id}>`
+        })).sort((a, b) => a.name.localeCompare(b.name));
+
+        res.json({ success: true, data: emojis });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Update panel channel (where panel is posted)
 router.put('/guilds/:guildId/panel/channel', async (req, res) => {
     try {
@@ -448,9 +476,14 @@ router.post('/guilds/:guildId/upload-image', async (req, res) => {
         const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
         const buffer = Buffer.from(matches[2], 'base64');
 
-        // Size limit (8MB for non-nitro, 25MB for nitro)
-        if (buffer.length > 8 * 1024 * 1024) {
-            return res.status(400).json({ success: false, error: 'حجم الصورة كبير (الحد 8MB).' });
+        // Size limit (10MB minimum, up to 25MB for nitro servers)
+        const maxSize = (uploadChannel.guild?.premiumTier > 0) ? 25 * 1024 * 1024 : 10 * 1024 * 1024;
+        if (buffer.length > maxSize) {
+            const limitMB = maxSize / (1024 * 1024);
+            return res.status(400).json({
+                success: false,
+                error: `حجم الصورة كبير. الحد ${limitMB}MB${uploadChannel.guild?.premiumTier > 0 ? ' (سيرفر Nitro)' : ''}.`
+            });
         }
 
         // Upload to Discord (hidden message)
