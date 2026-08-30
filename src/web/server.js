@@ -32,6 +32,9 @@ class WebServer {
     }
 
     setupMiddleware() {
+        // Trust Render's proxy (required for rate limit + correct client IPs)
+        this.app.set('trust proxy', 1);
+
         this.app.use(helmet({
             contentSecurityPolicy: false
         }));
@@ -43,19 +46,22 @@ class WebServer {
 
         this.app.use(session({
             secret: config.dashboard.sessionSecret,
-            resave: false,
-            saveUninitialized: false,
+            resave: true,
+            saveUninitialized: true,
             cookie: {
                 maxAge: 1000 * 60 * 60 * 24 * 7,
                 httpOnly: true,
-                secure: false
+                secure: false,
+                sameSite: 'lax'
             }
         }));
 
-        // Rate limiting
+        // Rate limiting - trust proxy is set above so X-Forwarded-For works
         const limiter = rateLimit({
             windowMs: 15 * 60 * 1000,
-            max: 100
+            max: 200,
+            standardHeaders: true,
+            legacyHeaders: false
         });
         this.app.use('/api/', limiter);
     }

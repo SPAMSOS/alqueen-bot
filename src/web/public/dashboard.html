@@ -859,6 +859,10 @@
             <div class="header">
                 <h1 id="pageTitle">📊 نظرة عامة</h1>
                 <div class="header-info">
+                    <a href="/licenses" id="headerLicensesBtn" style="display:none; background: linear-gradient(135deg, #5865F2 0%, #7B8FF7 100%); color: white; padding: 8px 14px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(88,101,242,0.3); transition: transform 0.15s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
+                        <span>👑</span>
+                        <span>إدارة الرخص</span>
+                    </a>
                     <div class="status">
                         <span class="status-dot"></span>
                         <span id="botStatusText">البوت متصل</span>
@@ -2263,6 +2267,8 @@
                     isOwnerUser = data?.isOwner === true;
                     if (isOwnerUser) {
                         document.getElementById('licensesNavItem').style.display = '';
+                        const headerBtn = document.getElementById('headerLicensesBtn');
+                        if (headerBtn) headerBtn.style.display = 'flex';
                     }
                 }
             } catch (e) {}

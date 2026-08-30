@@ -148,8 +148,11 @@ router.get('/callback', async (req, res) => {
             ).catch(err => console.error('DB save error:', err.message));
         }
 
-        // Redirect IMMEDIATELY
-        res.redirect('/dashboard');
+        // Force session save before redirect (ensures cookie is set on Render)
+        req.session.save((err) => {
+            if (err) console.error('Session save error:', err.message);
+            res.redirect('/dashboard');
+        });
     } catch (error) {
         console.error('OAuth callback error:', error);
         res.redirect('/?error=auth_failed');
