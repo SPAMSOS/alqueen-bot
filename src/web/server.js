@@ -50,6 +50,7 @@ class WebServer {
         // Session store: prefer MongoDB (persistent across restarts/instances)
         // Fall back to memory store if DB isn't connected yet
         let sessionStore = null;
+        console.log(`🔍 MongoDB readyState: ${mongoose.connection.readyState}`);
         if (mongoose.connection.readyState === 1) {
             try {
                 sessionStore = MongoStore.create({
@@ -60,9 +61,10 @@ class WebServer {
                 console.log('✅ Session store: MongoDB');
             } catch (e) {
                 console.warn('⚠️  MongoStore failed, using memory store:', e.message);
+                console.warn('   Error details:', e.stack);
             }
         } else {
-            console.warn('⚠️  MongoDB not ready, using memory session store (sessions will be lost on restart)');
+            console.warn('⚠️  MongoDB not ready (readyState=' + mongoose.connection.readyState + '), using memory session store');
         }
 
         this.app.use(session({

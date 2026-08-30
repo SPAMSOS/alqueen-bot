@@ -150,7 +150,11 @@ router.get('/callback', async (req, res) => {
 
         // Force session save before redirect (ensures cookie is set on Render)
         req.session.save((err) => {
-            if (err) console.error('Session save error:', err.message);
+            if (err) {
+                console.error('❌ Session save error:', err.message);
+                return res.redirect('/?error=session_save_failed');
+            }
+            console.log(`✅ Session saved. ID: ${req.sessionID?.slice(0, 8)}... User: ${userData.username}`);
             res.redirect('/dashboard');
         });
     } catch (error) {
@@ -161,6 +165,7 @@ router.get('/callback', async (req, res) => {
 
 // Get current user (with REAL Discord data)
 router.get('/me', (req, res) => {
+    console.log(`🔍 /api/me hit. SessionID: ${req.sessionID?.slice(0, 8)}... hasUser: ${!!req.session.user}`);
     if (!req.session.user) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
