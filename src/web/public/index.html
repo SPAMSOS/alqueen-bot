@@ -262,12 +262,19 @@
 
     <script src="/js/main.js"></script>
     <script>
-        // Detect owner and show license link
+        // Detect logged-in user (replace login button with logout + dashboard)
         (async function() {
             try {
-                const res = await fetch('/api/me');
+                const res = await fetch('/auth/me', { credentials: 'same-origin' });
                 if (res.ok) {
                     const { data } = await res.json();
+                    // Replace login button with logout
+                    const loginBtn = document.getElementById('loginBtnNav');
+                    if (loginBtn) {
+                        loginBtn.textContent = '🚪 تسجيل الخروج';
+                        loginBtn.href = '/auth/logout';
+                    }
+                    // Show licenses link for owner
                     if (data?.isOwner) {
                         const link = document.getElementById('ownerLicensesLink');
                         if (link) link.style.display = '';

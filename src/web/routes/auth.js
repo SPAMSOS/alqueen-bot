@@ -227,7 +227,21 @@ router.get('/me', async (req, res) => {
 
 // Logout
 router.get('/logout', (req, res) => {
-    req.session.destroy();
+    // Destroy session
+    if (req.session) {
+        req.session.destroy((err) => {
+            if (err) console.error('Session destroy:', err);
+        });
+    }
+    // Clear JWT cookie (this is the persistent one)
+    res.clearCookie('auth_token', {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        path: '/'
+    });
+    // Also clear the session cookie (connect.sid)
+    res.clearCookie('connect.sid', { path: '/' });
     res.redirect('/');
 });
 
