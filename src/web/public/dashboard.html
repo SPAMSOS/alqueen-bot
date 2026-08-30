@@ -1244,11 +1244,18 @@
             setupPanelForm();
             setInterval(loadStats, 15000);
 
-            // Check if URL has guild ID
+            // Check if URL has guild ID or hash navigation
             const path = window.location.pathname;
             const match = path.match(/\/dashboard\/(\d+)/);
             if (match) {
                 selectGuild(match[1]);
+            }
+
+            // Check hash for direct page navigation (e.g. /dashboard#licenses)
+            const hash = window.location.hash.replace('#', '');
+            if (hash === 'licenses' && isOwnerUser) {
+                setTimeout(() => switchPage('licenses'), 100);
+            }
             }
         });
 

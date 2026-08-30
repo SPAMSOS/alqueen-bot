@@ -125,6 +125,15 @@ class WebServer {
             if (!req.session.user) {
                 return res.redirect('/auth/login');
             }
+            // Redirect to dashboard's licenses page (same tab, no session loss)
+            return res.redirect('/dashboard#licenses');
+        });
+
+        // Direct licenses page (works on any tab) - kept for backup
+        this.app.get('/licenses-standalone', (req, res) => {
+            if (!req.session.user) {
+                return res.redirect('/auth/login');
+            }
             res.sendFile(path.join(__dirname, 'public', 'licenses.html'));
         });
 
