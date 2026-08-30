@@ -645,7 +645,29 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
             const { buildPanelEmbed, buildPanelButtons } = require('../../bot/utils/panelBuilder');
             const embed = buildPanelEmbed(newPanelSettings, channel.guild.name);
             const rows = buildPanelButtons(newPanelSettings);
-            const msg = await channel.send({ embeds: [embed], components: rows });
+            // Attach image file if Discord CDN URL — guarantees it shows in embed
+            let files = null;
+            if (newPanelSettings?.image) {
+                const imgUrl = String(newPanelSettings.image).trim();
+                if (imgUrl.includes('cdn.discordapp.com') || imgUrl.includes('media.discordapp.net')) {
+                    try {
+                        const response = await fetch(imgUrl);
+                        if (response.ok) {
+                            const buffer = Buffer.from(await response.arrayBuffer());
+                            const ext = imgUrl.includes('.gif') ? 'gif'
+                                : imgUrl.includes('.png') ? 'png'
+                                : imgUrl.includes('.webp') ? 'webp'
+                                : 'jpg';
+                            files = [{ attachment: buffer, name: `panel-image.${ext}` }];
+                            embed.setImage(`attachment://panel-image.${ext}`);
+                        }
+                    } catch (e) {
+                        console.error('Failed to attach panel image on sendNew:', e.message);
+                    }
+                }
+            }
+            const sendPayload = files ? { embeds: [embed], components: rows, files } : { embeds: [embed], components: rows };
+            const msg = await channel.send(sendPayload);
             result = { message: msg, action: 'sent' };
         } else {
             // Update existing (or fallback to recent bot message with components)

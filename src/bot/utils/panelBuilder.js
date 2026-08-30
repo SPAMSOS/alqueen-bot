@@ -23,8 +23,18 @@ function buildPanelEmbed(panelSettings, guildName) {
         .setFooter({ text: panelSettings?.footer || '🎫 ALQUEEN Ticket System' })
         .setTimestamp();
 
-    if (panelSettings?.image) embed.setImage(panelSettings.image);
-    if (panelSettings?.thumbnail) embed.setThumbnail(panelSettings.thumbnail);
+    if (panelSettings?.image) {
+        const imgUrl = String(panelSettings.image).trim();
+        if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
+            embed.setImage(imgUrl);
+        }
+    }
+    if (panelSettings?.thumbnail) {
+        const thumbUrl = String(panelSettings.thumbnail).trim();
+        if (thumbUrl.startsWith('http://') || thumbUrl.startsWith('https://')) {
+            embed.setThumbnail(thumbUrl);
+        }
+    }
     if (guildName) {
         embed.setAuthor({ name: `🎫 ${guildName} - نظام التكتات` });
     }
@@ -59,12 +69,39 @@ async function sendOrUpdatePanel(client, channel, panelSettings, guildName) {
     const rows = buildPanelButtons(panelSettings);
     const payload = { embeds: [embed], components: rows };
 
+    // If the image is a Discord CDN URL, we need to attach the file
+    // because Discord's image proxy doesn't always resolve CDN URLs reliably in embeds
+    let files = null;
+    if (panelSettings?.image) {
+        const imgUrl = String(panelSettings.image).trim();
+        if (imgUrl.includes('cdn.discordapp.com') || imgUrl.includes('media.discordapp.net')) {
+            try {
+                const response = await fetch(imgUrl);
+                if (response.ok) {
+                    const buffer = Buffer.from(await response.arrayBuffer());
+                    const ext = imgUrl.includes('.gif') ? 'gif'
+                        : imgUrl.includes('.png') ? 'png'
+                        : imgUrl.includes('.webp') ? 'webp'
+                        : 'jpg';
+                    files = [{ attachment: buffer, name: `panel-image.${ext}` }];
+                    // Use attachment:// reference in embed
+                    embed.setImage(`attachment://panel-image.${ext}`);
+                }
+            } catch (e) {
+                console.error('Failed to attach panel image:', e.message);
+                // Fall back to URL-based image
+            }
+        }
+    }
+
+    const finalPayload = files ? { ...payload, files } : payload;
+
     // Try to find existing panel message in channel
     if (panelSettings?.messageId) {
         try {
             const msg = await channel.messages.fetch(panelSettings.messageId);
             if (msg) {
-                await msg.edit(payload);
+                await msg.edit(finalPayload);
                 return { message: msg, action: 'updated' };
             }
         } catch (e) {
@@ -80,12 +117,12 @@ async function sendOrUpdatePanel(client, channel, panelSettings, guildName) {
             m.components && m.components.length > 0
         );
         if (botMsg) {
-            await botMsg.edit(payload);
+            await botMsg.edit(finalPayload);
             return { message: botMsg, action: 'updated' };
         }
     } catch (e) {}
 
-    const msg = await channel.send(payload);
+    const msg = await channel.send(finalPayload);
     return { message: msg, action: 'sent' };
 }
 
