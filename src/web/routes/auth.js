@@ -97,6 +97,7 @@ router.get('/callback', async (req, res) => {
         }
 
         // Set session IMMEDIATELY (don't wait for DB)
+        // Note: guilds are stored in DB only (not in JWT) to keep cookie < 4KB
         const userData_for_session = {
             id: userData.id,
             tag: userData.username + '#' + userData.discriminator,
@@ -107,7 +108,12 @@ router.get('/callback', async (req, res) => {
             discriminator: userData.discriminator,
             mfa_enabled: userData.mfa_enabled,
             verified: userData.verified,
-            guilds: Array.isArray(userGuilds) ? userGuilds
+            loginAt: new Date()
+        };
+
+        // Store guilds separately in DB (for later retrieval)
+        const adminGuilds = Array.isArray(userGuilds)
+            ? userGuilds
                 .filter(g => g.owner || (g.permissions & 0x20) === 0x20)
                 .map(g => ({
                     guildId: g.id,
@@ -115,9 +121,8 @@ router.get('/callback', async (req, res) => {
                     icon: g.icon,
                     owner: g.owner,
                     permissions: g.permissions
-                })) : [],
-            loginAt: new Date()
-        };
+                }))
+            : [];
 
         // Set in session too (for non-cookie access)
         req.session.user = userData_for_session;
@@ -169,7 +174,7 @@ router.get('/callback', async (req, res) => {
 });
 
 // Get current user (with REAL Discord data)
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
     // Use req.user (set by JWT middleware) or fall back to session
     const user = req.user || req.session.user;
     if (!user) {
@@ -181,6 +186,24 @@ router.get('/me', (req, res) => {
 
     const licenseService = require('../../bot/utils/licenseService');
     const isOwner = licenseService.isOwner(user.id);
+
+    // Fetch guilds from DB (since they're not in JWT to keep cookie small)
+    let userGuilds = user.guilds || [];
+    try {
+        const User = require('../../database/models/User');
+        const dbUser = await User.findOne({ userId: user.id });
+        if (dbUser && Array.isArray(dbUser.guilds) && dbUser.guilds.length > 0) {
+            userGuilds = dbUser.guilds.map(g => ({
+                guildId: g.guildId || g.id,
+                name: g.name,
+                icon: g.icon,
+                owner: g.owner,
+                permissions: g.permissions
+            }));
+        }
+    } catch (e) {
+        console.error('Fetch user guilds from DB:', e.message);
+    }
 
     res.json({
         success: true,
@@ -195,7 +218,7 @@ router.get('/me', (req, res) => {
             discriminator: user.discriminator,
             mfa_enabled: user.mfa_enabled,
             verified: user.verified,
-            guilds: user.guilds || [],
+            guilds: userGuilds,
             loginAt: user.loginAt,
             isOwner
         }

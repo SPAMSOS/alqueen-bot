@@ -1207,6 +1207,7 @@
     </div>
 
     <script>
+        console.log('🚀 Dashboard script loaded');
         let socket = null;
         let currentGuild = null;
         let userGuilds = [];
@@ -1260,12 +1261,16 @@
 
         async function loadUser() {
             try {
-                const res = await fetch('/auth/me');
+                console.log('📡 Fetching /auth/me...');
+                const res = await fetch('/auth/me', { credentials: 'same-origin' });
+                console.log('📡 /auth/me status:', res.status);
                 if (res.status === 401) {
+                    console.warn('🔒 Not authenticated, redirecting to home');
                     window.location.href = '/';
                     return null;
                 }
                 const json = await res.json();
+                console.log('📡 /auth/me response:', json);
                 const data = json.data || json;
                 console.log('👤 User loaded:', data);
                 const avatarEl = document.getElementById('userAvatar');
@@ -1284,8 +1289,11 @@
 
         async function loadStats() {
             try {
-                const res = await fetch('/api/stats');
+                console.log('📡 Fetching /api/stats...');
+                const res = await fetch('/api/stats', { credentials: 'same-origin' });
+                console.log('📡 /api/stats status:', res.status);
                 const { data } = await res.json();
+                console.log('📊 Stats data:', data);
                 if (data.bot) {
                     document.getElementById('totalGuilds').textContent = data.bot.guilds ?? 0;
                     document.getElementById('totalUsers').textContent = data.bot.users ?? 0;
@@ -1308,8 +1316,11 @@
 
         async function loadServerList() {
             try {
-                const res = await fetch('/api/guilds');
+                console.log('📡 Fetching /api/guilds...');
+                const res = await fetch('/api/guilds', { credentials: 'same-origin' });
+                console.log('📡 /api/guilds status:', res.status);
                 const { data } = await res.json();
+                console.log('📡 /api/guilds data:', data);
                 const list = document.getElementById('serversList');
                 if (!data || data.length === 0) {
                     list.innerHTML = '<div class="empty" style="padding: 20px 10px; font-size: 12px;">لا توجد سيرفرات مع البوت</div>';

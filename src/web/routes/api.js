@@ -98,7 +98,26 @@ router.get('/guilds', async (req, res) => {
         }
 
         const client = req.app.locals.client;
-        const userGuilds = userData.guilds || [];
+
+        // Get guilds: prefer JWT, fall back to DB (for large user guild lists)
+        let userGuilds = userData.guilds || [];
+        if (userGuilds.length === 0) {
+            try {
+                const User = require('../../database/models/User');
+                const dbUser = await User.findOne({ userId: userData.id });
+                if (dbUser && Array.isArray(dbUser.guilds)) {
+                    userGuilds = dbUser.guilds.map(g => ({
+                        guildId: g.guildId || g.id,
+                        name: g.name,
+                        icon: g.icon,
+                        owner: g.owner,
+                        permissions: g.permissions
+                    }));
+                }
+            } catch (e) {
+                console.error('Fetch user guilds from DB:', e.message);
+            }
+        }
         console.log(`🔍 /api/guilds: user=${userData.username}, guildsCount=${userGuilds.length}`);
 
         // Get bot's actual guilds
