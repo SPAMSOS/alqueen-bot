@@ -79,12 +79,27 @@ router.get('/public/stats', async (req, res) => {
 // Get user's guilds (with bot) - filtered to only servers user can access
 router.get('/guilds', async (req, res) => {
     try {
-        if (!req.session.user) {
+        // Use JWT cookie directly - don't rely on session store (MemoryStore loses data on restart)
+        const token = req.cookies?.auth_token;
+        const jwt = require('jsonwebtoken');
+        const config = require('../../config/settings');
+        let userData = null;
+
+        if (token) {
+            try {
+                userData = jwt.verify(token, config.security.jwtSecret);
+            } catch (e) {
+                return res.status(401).json({ success: false, error: 'Token invalid' });
+            }
+        }
+
+        if (!userData) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
         const client = req.app.locals.client;
-        const userGuilds = req.session.user.guilds || [];
+        const userGuilds = userData.guilds || [];
+        console.log(`🔍 /api/guilds: user=${userData.username}, guildsCount=${userGuilds.length}`);
 
         // Get bot's actual guilds
         const botGuildIds = client ? client.guilds.cache.map(g => g.id) : [];
@@ -141,7 +156,7 @@ router.get('/guilds', async (req, res) => {
 // Get ALL guilds from DB (admin only, not filtered by user)
 router.get('/guilds/all', async (req, res) => {
     try {
-        if (!req.session.user) {
+        if (!req.user && !req.session.user) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
 
@@ -835,8 +850,8 @@ router.post('/tickets/:ticketId/close', async (req, res) => {
         ticket.status = 'closed';
         ticket.closedAt = new Date();
         ticket.closedBy = {
-            userId: req.session.user?.id,
-            userTag: req.session.user?.tag,
+            userId: (req.user || req.session.user)?.id,
+            userTag: (req.user || req.session.user)?.tag,
             reason: req.body.reason || 'Closed from dashboard',
             at: new Date()
         };
@@ -870,7 +885,7 @@ router.post('/tickets/:ticketId/close', async (req, res) => {
 // Check if current user is the bot owner
 function checkOwner(req, res) {
     const ownerIds = licenseService.getOwnerIds();
-    const userId = req.session?.user?.id;
+    const userId = req.user?.id || req.session?.user?.id;
     if (!userId || !ownerIds.includes(String(userId))) {
         res.status(403).json({ success: false, error: 'هذا الإجراء متاح لمالك البوت فقط' });
         return false;
@@ -894,7 +909,7 @@ router.post('/licenses', async (req, res) => {
     if (!checkOwner(req, res)) return;
     try {
         const { durationDays = 30, note = '' } = req.body;
-        const license = await licenseService.createLicense(durationDays, note, req.session.user.id);
+        const license = await licenseService.createLicense(durationDays, note, (req.user || req.session.user).id);
         res.json({
             success: true,
             data: {

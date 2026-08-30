@@ -69,13 +69,15 @@ class WebServer {
         });
         this.app.use('/api/', limiter);
 
-        // JWT cookie auth: parse `auth_token` cookie into req.session.user
+        // JWT cookie auth: parse `auth_token` cookie into req.user
+        // (Don't rely on session store - MemoryStore loses data on Render restarts)
         const jwt = require('jsonwebtoken');
         this.app.use((req, res, next) => {
             const token = req.cookies?.auth_token;
             if (token) {
                 try {
                     const decoded = jwt.verify(token, config.security.jwtSecret);
+                    req.user = decoded;
                     req.session.user = decoded;
                 } catch (e) {
                     // Token invalid/expired — clear cookie

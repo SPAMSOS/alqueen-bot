@@ -170,12 +170,11 @@ router.get('/callback', async (req, res) => {
 
 // Get current user (with REAL Discord data)
 router.get('/me', (req, res) => {
-    console.log(`🔍 /api/me hit. SessionID: ${req.sessionID?.slice(0, 8)}... hasUser: ${!!req.session.user}`);
-    if (!req.session.user) {
+    // Use req.user (set by JWT middleware) or fall back to session
+    const user = req.user || req.session.user;
+    if (!user) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-
-    const user = req.session.user;
     const avatarUrl = user.avatar
         ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${user.avatar.startsWith('a_') ? 'gif' : 'png'}?size=256`
         : `https://cdn.discordapp.com/embed/avatars/${(parseInt(user.discriminator || '0') % 5)}.png`;

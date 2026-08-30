@@ -1256,7 +1256,6 @@
             if (hash === 'licenses' && isOwnerUser) {
                 setTimeout(() => switchPage('licenses'), 100);
             }
-            }
         });
 
         async function loadUser() {
@@ -2270,7 +2269,7 @@
 
         async function checkOwnerStatus() {
             try {
-                const res = await fetch('/api/me');
+                const res = await fetch('/auth/me');
                 if (res.ok) {
                     const { data } = await res.json();
                     isOwnerUser = data?.isOwner === true;
