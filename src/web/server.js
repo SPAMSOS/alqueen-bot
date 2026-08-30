@@ -5,6 +5,9 @@ const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const session = require('express-session');
+const MongoStoreModule = require('connect-mongo');
+const MongoStore = MongoStoreModule.default || MongoStoreModule;
+const mongoose = require('mongoose');
 const { rateLimit } = require('express-rate-limit');
 
 const config = require('../config/settings');
@@ -44,10 +47,29 @@ class WebServer {
         this.app.use(express.json({ limit: '30mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '30mb' }));
 
+        // Session store: prefer MongoDB (persistent across restarts/instances)
+        // Fall back to memory store if DB isn't connected yet
+        let sessionStore = null;
+        if (mongoose.connection.readyState === 1) {
+            try {
+                sessionStore = MongoStore.create({
+                    mongoUrl: config.database.uri,
+                    touchAfter: 24 * 3600,
+                    crypto: { secret: config.dashboard.sessionSecret }
+                });
+                console.log('✅ Session store: MongoDB');
+            } catch (e) {
+                console.warn('⚠️  MongoStore failed, using memory store:', e.message);
+            }
+        } else {
+            console.warn('⚠️  MongoDB not ready, using memory session store (sessions will be lost on restart)');
+        }
+
         this.app.use(session({
             secret: config.dashboard.sessionSecret,
-            resave: true,
-            saveUninitialized: true,
+            resave: false,
+            saveUninitialized: false,
+            store: sessionStore,
             cookie: {
                 maxAge: 1000 * 60 * 60 * 24 * 7,
                 httpOnly: true,
