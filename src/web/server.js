@@ -5,9 +5,7 @@ const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const session = require('express-session');
-const MongoStoreModule = require('connect-mongo');
-const MongoStore = MongoStoreModule.default || MongoStoreModule;
-const mongoose = require('mongoose');
+const cookieParser = require('cookie-parser');
 const { rateLimit } = require('express-rate-limit');
 
 const config = require('../config/settings');
@@ -43,35 +41,17 @@ class WebServer {
         }));
 
         this.app.use(cors());
+        this.app.use(cookieParser());
         // JSON limit raised to 30MB to support base64 image uploads (up to 25MB images)
         this.app.use(express.json({ limit: '30mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '30mb' }));
 
-        // Session store: prefer MongoDB (persistent across restarts/instances)
-        // Fall back to memory store if DB isn't connected yet
-        let sessionStore = null;
-        console.log(`🔍 MongoDB readyState: ${mongoose.connection.readyState}`);
-        if (mongoose.connection.readyState === 1) {
-            try {
-                sessionStore = MongoStore.create({
-                    mongoUrl: config.database.uri,
-                    touchAfter: 24 * 3600,
-                    crypto: { secret: config.dashboard.sessionSecret }
-                });
-                console.log('✅ Session store: MongoDB');
-            } catch (e) {
-                console.warn('⚠️  MongoStore failed, using memory store:', e.message);
-                console.warn('   Error details:', e.stack);
-            }
-        } else {
-            console.warn('⚠️  MongoDB not ready (readyState=' + mongoose.connection.readyState + '), using memory session store');
-        }
-
+        // Lightweight in-memory session for tracking non-essential state
+        // User identity is now stored in a signed JWT cookie (more reliable on Render)
         this.app.use(session({
             secret: config.dashboard.sessionSecret,
             resave: false,
             saveUninitialized: false,
-            store: sessionStore,
             cookie: {
                 maxAge: 1000 * 60 * 60 * 24 * 7,
                 httpOnly: true,
@@ -88,6 +68,22 @@ class WebServer {
             legacyHeaders: false
         });
         this.app.use('/api/', limiter);
+
+        // JWT cookie auth: parse `auth_token` cookie into req.session.user
+        const jwt = require('jsonwebtoken');
+        this.app.use((req, res, next) => {
+            const token = req.cookies?.auth_token;
+            if (token) {
+                try {
+                    const decoded = jwt.verify(token, config.security.jwtSecret);
+                    req.session.user = decoded;
+                } catch (e) {
+                    // Token invalid/expired — clear cookie
+                    res.clearCookie('auth_token');
+                }
+            }
+            next();
+        });
     }
 
     setupRoutes() {

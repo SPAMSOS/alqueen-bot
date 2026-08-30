@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const User = require('../../database/models/User');
+const config = require('../../config/settings');
 
 // Login page redirect
 router.get('/login', (req, res) => {
@@ -95,7 +97,7 @@ router.get('/callback', async (req, res) => {
         }
 
         // Set session IMMEDIATELY (don't wait for DB)
-        req.session.user = {
+        const userData_for_session = {
             id: userData.id,
             tag: userData.username + '#' + userData.discriminator,
             username: userData.username,
@@ -114,10 +116,20 @@ router.get('/callback', async (req, res) => {
                     owner: g.owner,
                     permissions: g.permissions
                 })) : [],
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
             loginAt: new Date()
         };
+
+        // Set in session too (for non-cookie access)
+        req.session.user = userData_for_session;
+
+        // Sign JWT token and store in cookie (persists across restarts on Render)
+        const token = jwt.sign(userData_for_session, config.security.jwtSecret, { expiresIn: '7d' });
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: false, // Render uses proxy
+            sameSite: 'lax',
+            maxAge: 1000 * 60 * 60 * 24 * 7
+        });
 
         console.log(`✅ User logged in: ${userData.username}#${userData.discriminator} (${userData.id})`);
 
@@ -148,15 +160,8 @@ router.get('/callback', async (req, res) => {
             ).catch(err => console.error('DB save error:', err.message));
         }
 
-        // Force session save before redirect (ensures cookie is set on Render)
-        req.session.save((err) => {
-            if (err) {
-                console.error('❌ Session save error:', err.message);
-                return res.redirect('/?error=session_save_failed');
-            }
-            console.log(`✅ Session saved. ID: ${req.sessionID?.slice(0, 8)}... User: ${userData.username}`);
-            res.redirect('/dashboard');
-        });
+        // Redirect immediately (cookie is already set above)
+        res.redirect('/dashboard');
     } catch (error) {
         console.error('OAuth callback error:', error);
         res.redirect('/?error=auth_failed');

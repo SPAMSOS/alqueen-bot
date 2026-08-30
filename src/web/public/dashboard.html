@@ -1266,14 +1266,16 @@
                     window.location.href = '/';
                     return null;
                 }
-                const { data } = await res.json();
+                const json = await res.json();
+                const data = json.data || json;
+                console.log('👤 User loaded:', data);
                 const avatarEl = document.getElementById('userAvatar');
                 if (data.avatarUrl) {
                     avatarEl.innerHTML = `<img src="${data.avatarUrl}" alt="">`;
-                } else {
-                    avatarEl.textContent = (data.username || 'U').charAt(0).toUpperCase();
+                } else if (data.username || data.tag) {
+                    avatarEl.textContent = ((data.username || data.tag || 'U').toString()).charAt(0).toUpperCase();
                 }
-                document.getElementById('userName').textContent = data.username || data.tag;
+                document.getElementById('userName').textContent = data.username || data.global_name || data.tag || 'مستخدم';
                 return data;
             } catch (e) {
                 console.error('Auth error:', e);
