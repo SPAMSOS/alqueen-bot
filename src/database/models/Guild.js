@@ -64,6 +64,13 @@ const guildSchema = new mongoose.Schema({
     },
     panelMessageId: String,
     panelImageMessages: [{ type: String }], // Message IDs storing panel images (to keep URLs valid)
+    // License activation
+    license: {
+        code: { type: String, default: null },
+        activatedAt: { type: Date, default: null },
+        expiresAt: { type: Date, default: null },
+        revoked: { type: Boolean, default: false } // Owner can manually disable
+    },
     stats: {
         totalTickets: { type: Number, default: 0 },
         openTickets: { type: Number, default: 0 },

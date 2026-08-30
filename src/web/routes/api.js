@@ -3,7 +3,9 @@ const router = express.Router();
 const Guild = require('../../database/models/Guild');
 const Ticket = require('../../database/models/Ticket');
 const TicketLog = require('../../database/models/TicketLog');
+const License = require('../../database/models/License');
 const { sendOrUpdatePanel, DEFAULT_BUTTONS } = require('../../bot/utils/panelBuilder');
+const licenseService = require('../../bot/utils/licenseService');
 
 // Bot stats
 router.get('/stats', async (req, res) => {
@@ -95,6 +97,19 @@ router.get('/guilds', async (req, res) => {
             const guildData = await Guild.findOne({ guildId: ug.guildId });
             const botGuild = client?.guilds?.cache?.get(ug.guildId);
 
+            // Compute license status
+            const lic = guildData?.license || {};
+            let licenseStatus = 'not_activated';
+            let daysLeft = 0;
+            if (lic.code) {
+                if (lic.revoked) licenseStatus = 'revoked';
+                else if (lic.expiresAt && new Date() > new Date(lic.expiresAt)) licenseStatus = 'expired';
+                else {
+                    licenseStatus = 'active';
+                    daysLeft = Math.max(0, Math.ceil((new Date(lic.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)));
+                }
+            }
+
             return {
                 guildId: ug.guildId,
                 name: ug.name || (botGuild ? botGuild.name : 'Unknown'),
@@ -106,7 +121,13 @@ router.get('/guilds', async (req, res) => {
                 owner: ug.owner,
                 permissions: ug.permissions,
                 settings: guildData?.settings || {},
-                stats: guildData?.stats || { totalTickets: 0, openTickets: 0, closedTickets: 0 }
+                stats: guildData?.stats || { totalTickets: 0, openTickets: 0, closedTickets: 0 },
+                license: {
+                    code: lic.code || null,
+                    status: licenseStatus,
+                    daysLeft,
+                    expiresAt: lic.expiresAt || null
+                }
             };
         }));
 
@@ -839,6 +860,170 @@ router.post('/tickets/:ticketId/close', async (req, res) => {
         }
 
         res.json({ success: true, data: ticket });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =================== LICENSE MANAGEMENT (Owner only) ===================
+
+// Check if current user is the bot owner
+function checkOwner(req, res) {
+    const ownerIds = licenseService.getOwnerIds();
+    const userId = req.session?.user?.id;
+    if (!userId || !ownerIds.includes(String(userId))) {
+        res.status(403).json({ success: false, error: 'هذا الإجراء متاح لمالك البوت فقط' });
+        return false;
+    }
+    return true;
+}
+
+// Get all licenses (active, used, available)
+router.get('/licenses', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const licenses = await License.find().sort({ createdAt: -1 }).lean();
+        res.json({ success: true, data: licenses });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Create new license
+router.post('/licenses', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const { durationDays = 30, note = '' } = req.body;
+        const license = await licenseService.createLicense(durationDays, note, req.session.user.id);
+        res.json({
+            success: true,
+            data: {
+                code: license.code,
+                durationDays: license.durationDays,
+                note: license.note,
+                createdAt: license.createdAt
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Disable a license (mark inactive so it can't be used)
+router.post('/licenses/:code/disable', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const code = req.params.code.toUpperCase();
+        const lic = await License.findOne({ code });
+        if (!lic) return res.status(404).json({ success: false, error: 'الكود غير موجود' });
+        if (lic.usedBy?.guildId) {
+            return res.status(400).json({ success: false, error: 'لا يمكن تعطيل كود مُستخدم - استخدم /revokelicense بدلاً من ذلك' });
+        }
+        lic.isActive = false;
+        await lic.save();
+        res.json({ success: true, message: 'تم تعطيل الكود' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Reactivate a license
+router.post('/licenses/:code/enable', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const code = req.params.code.toUpperCase();
+        const lic = await License.findOne({ code });
+        if (!lic) return res.status(404).json({ success: false, error: 'الكود غير موجود' });
+        if (lic.usedBy?.guildId) {
+            return res.status(400).json({ success: false, error: 'لا يمكن إعادة تفعيل كود مُستخدم' });
+        }
+        lic.isActive = true;
+        await lic.save();
+        res.json({ success: true, message: 'تم تفعيل الكود' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Delete a license (only if unused)
+router.delete('/licenses/:code', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const code = req.params.code.toUpperCase();
+        const lic = await License.findOne({ code });
+        if (!lic) return res.status(404).json({ success: false, error: 'الكود غير موجود' });
+        if (lic.usedBy?.guildId) {
+            return res.status(400).json({ success: false, error: 'لا يمكن حذف كود مُستخدم' });
+        }
+        await License.deleteOne({ code });
+        res.json({ success: true, message: 'تم حذف الكود' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get all guilds with their license status
+router.get('/licenses/guilds', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const guilds = await Guild.find().lean();
+        const enriched = guilds.map(g => {
+            const lic = g.license || {};
+            let status = 'not_activated';
+            if (lic.code) {
+                if (lic.revoked) status = 'revoked';
+                else if (lic.expiresAt && new Date() > new Date(lic.expiresAt)) status = 'expired';
+                else status = 'active';
+            }
+            return {
+                guildId: g.guildId,
+                name: g.name,
+                icon: g.icon,
+                ownerId: g.ownerId,
+                status,
+                license: lic,
+                daysLeft: lic.expiresAt
+                    ? Math.max(0, Math.ceil((new Date(lic.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)))
+                    : 0
+            };
+        });
+        res.json({ success: true, data: enriched });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Revoke a guild's license
+router.post('/licenses/guilds/:guildId/revoke', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const result = await licenseService.revokeGuild(req.params.guildId);
+        if (!result.success) return res.status(404).json(result);
+        res.json({ success: true, message: 'تم إيقاف السيرفر' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Unrevoke a guild's license
+router.post('/licenses/guilds/:guildId/unrevoke', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const result = await licenseService.unrevokeGuild(req.params.guildId);
+        if (!result.success) return res.status(404).json(result);
+        res.json({ success: true, message: 'تم إعادة تفعيل السيرفر' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Reset (delete) a guild's license
+router.delete('/licenses/guilds/:guildId', async (req, res) => {
+    if (!checkOwner(req, res)) return;
+    try {
+        const result = await licenseService.deleteGuild(req.params.guildId);
+        if (!result.success) return res.status(404).json(result);
+        res.json({ success: true, message: 'تم مسح التفعيل من السيرفر' });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

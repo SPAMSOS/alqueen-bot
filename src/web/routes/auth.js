@@ -167,6 +167,9 @@ router.get('/me', (req, res) => {
         ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${user.avatar.startsWith('a_') ? 'gif' : 'png'}?size=256`
         : `https://cdn.discordapp.com/embed/avatars/${(parseInt(user.discriminator || '0') % 5)}.png`;
 
+    const licenseService = require('../../bot/utils/licenseService');
+    const isOwner = licenseService.isOwner(user.id);
+
     res.json({
         success: true,
         data: {
@@ -181,7 +184,8 @@ router.get('/me', (req, res) => {
             mfa_enabled: user.mfa_enabled,
             verified: user.verified,
             guilds: user.guilds || [],
-            loginAt: user.loginAt
+            loginAt: user.loginAt,
+            isOwner
         }
     });
 });

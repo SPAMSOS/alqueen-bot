@@ -819,6 +819,10 @@
                     <span class="icon">🤖</span>
                     <span>معلومات البوت</span>
                 </div>
+                <div class="nav-item" data-page="licenses" id="licensesNavItem" style="display:none;">
+                    <span class="icon">🔑</span>
+                    <span>إدارة الرخص</span>
+                </div>
             </div>
 
             <div class="nav-section" id="guildNav" style="display:none;">
@@ -978,6 +982,7 @@
                 </div>
                 <div id="guildContent" style="display:none;">
                     <div class="guild-header" id="guildHeader"></div>
+                    <div id="licenseWarning" style="display:none; margin-bottom: 16px; padding: 16px; border-radius: 10px; background: rgba(254,231,92,0.1); border: 1px solid #FEE75C;"></div>
                     <div class="stats">
                         <div class="stat-card">
                             <div class="stat-icon">🎫</div>
@@ -1157,6 +1162,43 @@
                     </div>
                 </form>
             </div>
+
+            <!-- License Management Page (Owner Only) -->
+            <div class="page" id="page-licenses">
+                <h2 class="section-title">🔑 إدارة الرخص</h2>
+
+                <div class="form-card" style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 14px; font-size: 16px;">➕ إنشاء كود تفعيل جديد</h3>
+                    <div style="display: grid; grid-template-columns: 200px 1fr auto; gap: 10px; align-items: end;">
+                        <div class="form-group" style="margin: 0;">
+                            <label class="form-label">المدة (بالأيام)</label>
+                            <input type="number" class="form-input" id="newLicenseDays" value="30" min="1" max="3650">
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label class="form-label">ملاحظة (اختياري)</label>
+                            <input type="text" class="form-input" id="newLicenseNote" placeholder="مثال: للعميل أحمد">
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="createLicense()" style="height: 42px;">🔑 إنشاء</button>
+                    </div>
+                </div>
+
+                <div class="form-card" style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                        <h3 style="font-size: 16px;">📋 الأكواد</h3>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn btn-sm" onclick="filterLicenses('all')" id="licFilterAll" style="background: var(--accent); color: white;">الكل</button>
+                            <button type="button" class="btn btn-sm" onclick="filterLicenses('available')" id="licFilterAvailable" style="background: rgba(255,255,255,0.08);">متاحة</button>
+                            <button type="button" class="btn btn-sm" onclick="filterLicenses('used')" id="licFilterUsed" style="background: rgba(255,255,255,0.08);">مستخدمة</button>
+                        </div>
+                    </div>
+                    <div id="licensesList"></div>
+                </div>
+
+                <div class="form-card">
+                    <h3 style="margin-bottom: 14px; font-size: 16px;">🖥️ سيرفرات البوت</h3>
+                    <div id="guildsLicensesList"></div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -1170,19 +1212,26 @@
             overview: '📊 نظرة عامة',
             tickets: '🎫 جميع التكتات',
             bot: '🤖 معلومات البوت',
+            licenses: '🔑 إدارة الرخص',
             'guild-overview': '📊 نظرة عامة',
             'guild-tickets': '🎫 التكتات',
             'guild-settings': '⚙️ الإعدادات',
             'guild-panel': '🎨 لوحة التكت'
         };
 
+        let currentUser = null;
+        let isOwnerUser = false;
+        let currentLicenseFilter = 'all';
+
         // Init
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await loadUser();
             if (!user) return;
+            currentUser = user;
             userGuilds = user.guilds || [];
             await loadStats();
             await loadServerList();
+            await checkOwnerStatus();
             connectSocket();
             setupNav();
             setupTicketFilters();
@@ -1254,20 +1303,26 @@
                     list.innerHTML = '<div class="empty" style="padding: 20px 10px; font-size: 12px;">لا توجد سيرفرات مع البوت</div>';
                     return;
                 }
-                list.innerHTML = data.map(g => `
+                list.innerHTML = data.map(g => {
+                    const lic = g.license || {};
+                    const licBadge = lic.status === 'active' ? `<span style="font-size: 9px; background: rgba(87,242,135,0.2); color: #57F287; padding: 2px 5px; border-radius: 4px; margin-right: 4px;">✅ ${lic.daysLeft}ي</span>`
+                        : lic.status === 'expired' ? `<span style="font-size: 9px; background: rgba(254,231,92,0.2); color: #FEE75C; padding: 2px 5px; border-radius: 4px; margin-right: 4px;">⚠️ منتهي</span>`
+                        : lic.status === 'revoked' ? `<span style="font-size: 9px; background: rgba(237,66,69,0.2); color: #ED4245; padding: 2px 5px; border-radius: 4px; margin-right: 4px;">🚫 معطّل</span>`
+                        : `<span style="font-size: 9px; background: rgba(255,255,255,0.1); color: #99AAB5; padding: 2px 5px; border-radius: 4px; margin-right: 4px;">🔒 غير مفعل</span>`;
+                    return `
                     <div class="server-item" data-guild-id="${g.guildId}" onclick="selectGuild('${g.guildId}')">
                         <div class="server-icon">
                             ${g.iconUrl ? `<img src="${g.iconUrl}" alt="${escapeHtml(g.name)}">` : escapeHtml((g.name || 'S').charAt(0))}
                         </div>
                         <div class="server-info">
                             <div class="server-name">${escapeHtml(g.name || 'بدون اسم')}</div>
-                            <div class="server-status">
+                            <div class="server-status" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
                                 <span class="dot"></span>
-                                ${g.memberCount || 0} عضو
+                                ${g.memberCount || 0} عضو ${licBadge}
                             </div>
                         </div>
                     </div>
-                `).join('');
+                `;}).join('');
             } catch (e) {
                 console.error('Load server list:', e);
             }
@@ -1310,6 +1365,7 @@
 
                 renderGuildHeader(guild, ['guildHeader', 'guildHeaderTickets', 'guildHeaderSettings', 'guildHeaderPanel']);
                 renderGuildStats(guild, stats);
+                renderLicenseWarning(guild);
 
                 // Load tickets, settings, panel
                 await loadGuildTickets(guildId);
@@ -1339,6 +1395,10 @@
                         <span>👥 ${guild.memberCount || 0} عضو</span>
                         <span>🎫 ${guild.stats?.totalTickets || 0} تكت</span>
                         <span>🆔 ${guild.guildId}</span>
+                        ${guild.license?.status === 'active' ? `<span style="color: #57F287;">✅ مفعل (${guild.license.daysLeft}ي)</span>` : ''}
+                        ${guild.license?.status === 'expired' ? '<span style="color: #FEE75C;">⚠️ التفعيل منتهي</span>' : ''}
+                        ${guild.license?.status === 'revoked' ? '<span style="color: #ED4245;">🚫 معطّل من المالك</span>' : ''}
+                        ${!guild.license?.code ? '<span style="color: #99AAB5;">🔒 غير مفعل</span>' : ''}
                     </div>
                 </div>
             `;
@@ -1346,6 +1406,33 @@
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = html;
             });
+        }
+
+        function renderLicenseWarning(guild) {
+            const el = document.getElementById('licenseWarning');
+            if (!el) return;
+            const lic = guild.license || {};
+            if (lic.status === 'expired') {
+                el.style.display = '';
+                el.style.background = 'rgba(254,231,92,0.1)';
+                el.style.borderColor = '#FEE75C';
+                el.style.color = '#FEE75C';
+                el.innerHTML = `<strong>⚠️ انتهت صلاحية التفعيل</strong><div style="font-size: 12px; margin-top: 4px; color: var(--text-secondary);">تواصل مع مالك البوت لتجديد الكود. البوت لن يعمل في هذا السيرفر حتى التجديد.</div>`;
+            } else if (lic.status === 'revoked') {
+                el.style.display = '';
+                el.style.background = 'rgba(237,66,69,0.1)';
+                el.style.borderColor = '#ED4245';
+                el.style.color = '#ED4245';
+                el.innerHTML = `<strong>🚫 تم إيقاف التفعيل من المالك</strong><div style="font-size: 12px; margin-top: 4px; color: var(--text-secondary);">تواصل مع مالك البوت لإعادة التفعيل.</div>`;
+            } else if (!lic.code) {
+                el.style.display = '';
+                el.style.background = 'rgba(255,255,255,0.05)';
+                el.style.borderColor = 'rgba(255,255,255,0.2)';
+                el.style.color = 'var(--text-muted)';
+                el.innerHTML = `<strong>🔒 البوت غير مفعل في هذا السيرفر</strong><div style="font-size: 12px; margin-top: 4px; color: var(--text-secondary);">تواصل مع مالك البوت للحصول على كود تفعيل، ثم استخدم <code>/activate &lt;code&gt;</code> في السيرفر.</div>`;
+            } else {
+                el.style.display = 'none';
+            }
         }
 
         function renderGuildStats(guild, stats) {
@@ -2165,6 +2252,267 @@
             await fetch('/auth/logout');
             window.location.href = '/';
         }
+
+        // ============== LICENSE MANAGEMENT ==============
+
+        async function checkOwnerStatus() {
+            try {
+                const res = await fetch('/api/me');
+                if (res.ok) {
+                    const { data } = await res.json();
+                    isOwnerUser = data?.isOwner === true;
+                    if (isOwnerUser) {
+                        document.getElementById('licensesNavItem').style.display = '';
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function createLicense() {
+            if (!isOwnerUser) {
+                toast('❌ متاح لمالك البوت فقط', 'error');
+                return;
+            }
+            const days = parseInt(document.getElementById('newLicenseDays').value) || 30;
+            const note = document.getElementById('newLicenseNote').value.trim();
+            try {
+                const res = await fetch('/api/licenses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ durationDays: days, note })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('newLicenseNote').value = '';
+                    toast(`✅ تم إنشاء الكود: ${result.data.code}`, 'success');
+                    await loadLicenses();
+                    await loadGuildsLicenses();
+                } else {
+                    toast('❌ ' + (result.error || 'فشل'), 'error');
+                }
+            } catch (e) {
+                toast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function loadLicenses() {
+            if (!isOwnerUser) return;
+            try {
+                const res = await fetch('/api/licenses');
+                const { data } = await res.json();
+                renderLicenses(data || []);
+                renderGuildsLicenses(allGuildsLicensesCache || []);
+            } catch (e) {
+                console.error('loadLicenses:', e);
+            }
+        }
+
+        let allLicensesCache = [];
+        let allGuildsLicensesCache = [];
+
+        function renderLicenses(licenses) {
+            allLicensesCache = licenses;
+            const list = document.getElementById('licensesList');
+            if (!licenses.length) {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">لا توجد أكواد. أنشئ كود جديد.</p>';
+                return;
+            }
+            const filtered = currentLicenseFilter === 'all' ? licenses
+                : currentLicenseFilter === 'available' ? licenses.filter(l => !l.usedBy?.guildId)
+                : licenses.filter(l => l.usedBy?.guildId);
+
+            if (!filtered.length) {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">لا توجد نتائج</p>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(l => {
+                const isUsed = l.usedBy?.guildId;
+                const isActive = l.isActive !== false;
+                const status = isUsed
+                    ? '<span style="color: #57F287;">✅ مستخدم</span>'
+                    : isActive
+                        ? '<span style="color: #5865F2;">🟢 متاح</span>'
+                        : '<span style="color: #ED4245;">⛔ معطّل</span>';
+
+                let actions = '';
+                if (!isUsed && isActive) {
+                    actions += `<button class="btn btn-sm" style="background: rgba(237,66,69,0.15); color: #ED4245;" onclick="toggleLicense('${l.code}', false)">⛔ تعطيل</button> `;
+                    actions += `<button class="btn btn-sm" style="background: rgba(237,66,69,0.15); color: #ED4245;" onclick="deleteLicense('${l.code}')">🗑️</button>`;
+                } else if (!isUsed && !isActive) {
+                    actions += `<button class="btn btn-sm" style="background: rgba(87,242,135,0.15); color: #57F287;" onclick="toggleLicense('${l.code}', true)">✅ تفعيل</button> `;
+                    actions += `<button class="btn btn-sm" style="background: rgba(237,66,69,0.15); color: #ED4245;" onclick="deleteLicense('${l.code}')">🗑️</button>`;
+                } else {
+                    actions += '<span style="color: var(--text-muted); font-size: 12px;">لا يمكن تعديله</span>';
+                }
+
+                return `
+                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-family: monospace; font-size: 16px; font-weight: 700; color: var(--accent);">${l.code}</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${l.durationDays} يوم ${l.note ? '• ' + escapeHtml(l.note) : ''}</div>
+                        </div>
+                        <div style="font-size: 12px;">
+                            ${status}
+                            ${isUsed ? `<div style="color: var(--text-muted); margin-top: 4px;">في: ${escapeHtml(l.usedBy.guildName || l.usedBy.guildId)} • ينتهي: <t:${Math.floor(new Date(l.expiresAt).getTime() / 1000)}:R></div>` : ''}
+                        </div>
+                        <div>${actions}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterLicenses(filter) {
+            currentLicenseFilter = filter;
+            document.getElementById('licFilterAll').style.background = filter === 'all' ? 'var(--accent)' : 'rgba(255,255,255,0.08)';
+            document.getElementById('licFilterAll').style.color = filter === 'all' ? 'white' : '';
+            document.getElementById('licFilterAvailable').style.background = filter === 'available' ? 'var(--accent)' : 'rgba(255,255,255,0.08)';
+            document.getElementById('licFilterAvailable').style.color = filter === 'available' ? 'white' : '';
+            document.getElementById('licFilterUsed').style.background = filter === 'used' ? 'var(--accent)' : 'rgba(255,255,255,0.08)';
+            document.getElementById('licFilterUsed').style.color = filter === 'used' ? 'white' : '';
+            renderLicenses(allLicensesCache);
+        }
+
+        async function toggleLicense(code, enable) {
+            const action = enable ? 'enable' : 'disable';
+            try {
+                const res = await fetch(`/api/licenses/${code}/${action}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    toast('✅ ' + (result.message || 'تم'), 'success');
+                    await loadLicenses();
+                } else {
+                    toast('❌ ' + (result.error || 'فشل'), 'error');
+                }
+            } catch (e) {
+                toast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function deleteLicense(code) {
+            if (!confirm(`حذف الكود ${code}؟`)) return;
+            try {
+                const res = await fetch(`/api/licenses/${code}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    toast('✅ تم الحذف', 'success');
+                    await loadLicenses();
+                } else {
+                    toast('❌ ' + (result.error || 'فشل'), 'error');
+                }
+            } catch (e) {
+                toast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function loadGuildsLicenses() {
+            if (!isOwnerUser) return;
+            try {
+                const res = await fetch('/api/licenses/guilds');
+                const { data } = await res.json();
+                allGuildsLicensesCache = data || [];
+                renderGuildsLicenses(allGuildsLicensesCache);
+            } catch (e) {
+                console.error('loadGuildsLicenses:', e);
+            }
+        }
+
+        function renderGuildsLicenses(guilds) {
+            const list = document.getElementById('guildsLicensesList');
+            if (!guilds.length) {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">لا يوجد سيرفرات</p>';
+                return;
+            }
+            list.innerHTML = guilds.map(g => {
+                const statusColors = {
+                    active: '#57F287',
+                    expired: '#FEE75C',
+                    revoked: '#ED4245',
+                    not_activated: '#99AAB5'
+                };
+                const statusEmojis = {
+                    active: '✅',
+                    expired: '⚠️',
+                    revoked: '🚫',
+                    not_activated: '⚪'
+                };
+                const statusText = {
+                    active: 'مفعل',
+                    expired: 'منتهي',
+                    revoked: 'معطّل',
+                    not_activated: 'غير مفعل'
+                };
+                const color = statusColors[g.status] || '#99AAB5';
+                const emoji = statusEmojis[g.status] || '⚪';
+                const text = statusText[g.status] || g.status;
+
+                let actions = '';
+                if (g.license?.code) {
+                    if (g.status === 'revoked') {
+                        actions = `<button class="btn btn-sm" style="background: rgba(87,242,135,0.15); color: #57F287;" onclick="toggleGuildLicense('${g.guildId}', 'unrevoke')">✅ إعادة التفعيل</button> `;
+                    } else {
+                        actions = `<button class="btn btn-sm" style="background: rgba(237,66,69,0.15); color: #ED4245;" onclick="toggleGuildLicense('${g.guildId}', 'revoke')">🚫 إيقاف</button> `;
+                    }
+                    actions += `<button class="btn btn-sm" style="background: rgba(255,255,255,0.05); color: var(--text-muted);" onclick="resetGuildLicense('${g.guildId}', '${escapeHtml(g.name)}')">🗑️ مسح</button>`;
+                }
+
+                return `
+                    <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-weight: 700; font-size: 14px;">${escapeHtml(g.name)}</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                ${g.license?.code ? `🔑 <code>${g.license.code}</code>` : '— لا يوجد كود —'}
+                                ${g.daysLeft > 0 ? ` • ⏰ متبقي ${g.daysLeft} يوم` : g.license?.expiresAt ? ' • ⏰ منتهي' : ''}
+                            </div>
+                        </div>
+                        <div style="font-size: 13px; font-weight: 700; color: ${color};">${emoji} ${text}</div>
+                        <div>${actions}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleGuildLicense(guildId, action) {
+            try {
+                const res = await fetch(`/api/licenses/guilds/${guildId}/${action}`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    toast('✅ ' + (result.message || 'تم'), 'success');
+                    await loadGuildsLicenses();
+                } else {
+                    toast('❌ ' + (result.error || 'فشل'), 'error');
+                }
+            } catch (e) {
+                toast('❌ ' + e.message, 'error');
+            }
+        }
+
+        async function resetGuildLicense(guildId, name) {
+            if (!confirm(`مسح التفعيل من "${name}"؟ الكود نفسه يصير متاح للاستخدام مرة ثانية.`)) return;
+            try {
+                const res = await fetch(`/api/licenses/guilds/${guildId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    toast('✅ ' + (result.message || 'تم'), 'success');
+                    await loadGuildsLicenses();
+                    await loadLicenses();
+                } else {
+                    toast('❌ ' + (result.error || 'فشل'), 'error');
+                }
+            } catch (e) {
+                toast('❌ ' + e.message, 'error');
+            }
+        }
+
+        // Hook into page switcher - load licenses data when license page opens
+        const _origSwitchPage = switchPage;
+        switchPage = function(page) {
+            _origSwitchPage(page);
+            if (page === 'licenses' && isOwnerUser) {
+                loadLicenses();
+                loadGuildsLicenses();
+            }
+        };
     </script>
 </body>
 </html>

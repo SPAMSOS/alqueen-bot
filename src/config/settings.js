@@ -13,6 +13,11 @@ const config = {
         transcriptChannelId: process.env.TRANSCRIPT_CHANNEL_ID
     },
 
+    // Bot owner(s) - comma-separated Discord IDs in BOT_OWNER_IDS env
+    bot: {
+        ownerId: process.env.BOT_OWNER_IDS || ''
+    },
+
     // Dashboard
     dashboard: {
         port: process.env.PORT || 3000,
