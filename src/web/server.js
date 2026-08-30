@@ -40,7 +40,6 @@ class WebServer {
         // JSON limit raised to 30MB to support base64 image uploads (up to 25MB images)
         this.app.use(express.json({ limit: '30mb' }));
         this.app.use(express.urlencoded({ extended: true, limit: '30mb' }));
-        this.app.use(express.static(path.join(__dirname, 'public')));
 
         this.app.use(session({
             secret: config.dashboard.sessionSecret,
@@ -68,12 +67,11 @@ class WebServer {
         this.app.use('/api', apiRoutes);
         this.app.use('/auth', authRoutes);
 
-        // Main page
+        // Page routes (must be BEFORE static to avoid Cannot GET on /licenses)
         this.app.get('/', (req, res) => {
             res.sendFile(path.join(__dirname, 'public', 'index.html'));
         });
 
-        // Dashboard page
         this.app.get('/dashboard', (req, res) => {
             if (!req.session.user) {
                 return res.redirect('/');
@@ -81,7 +79,6 @@ class WebServer {
             res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
         });
 
-        // Server-specific dashboard
         this.app.get('/dashboard/:guildId', (req, res) => {
             if (!req.session.user) {
                 return res.redirect('/');
@@ -89,7 +86,6 @@ class WebServer {
             res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
         });
 
-        // Premium page
         this.app.get('/premium', (req, res) => {
             res.sendFile(path.join(__dirname, 'public', 'premium.html'));
         });
@@ -101,6 +97,9 @@ class WebServer {
             }
             res.sendFile(path.join(__dirname, 'public', 'licenses.html'));
         });
+
+        // Static files served LAST so page routes take precedence
+        this.app.use(express.static(path.join(__dirname, 'public')));
     }
 
     setupErrorHandler() {
