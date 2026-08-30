@@ -1089,7 +1089,10 @@
             <!-- GUILD PANEL EDITOR -->
             <div class="page" id="page-guild-panel">
                 <div class="guild-header" id="guildHeaderPanel"></div>
-                <h2 class="section-title">🎨 لوحة التكت</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <h2 class="section-title" style="margin: 0;">🎨 لوحة التكت</h2>
+                    <button type="button" class="btn btn-sm" onclick="syncGuildData()" style="background: rgba(88,101,242,0.15); border: 1px solid var(--accent); color: var(--accent);">🔄 مزامنة مع ديسكورد</button>
+                </div>
 
                 <div id="panelSetupWarning" class="form-card" style="display:none; border-color: var(--warning); background: rgba(245, 158, 11, 0.08);">
                     <h3 style="color: var(--warning); margin-bottom: 10px;">⚠️ لم يتم إعداد النظام</h3>
@@ -1522,17 +1525,92 @@
         }
 
         const POPULAR_EMOJIS = ['🎫','🛒','💰','🛍️','💳','🔧','⚙️','🛠️','💡','❓','❔','📌','📢','💬','📞','🤝','👋','🤚','✋','🎁','🎉','⭐','🌟','✨','🔥','❤️','💖','💯','📊','📈','📉','🎨','🎮','🎯','🏆','👑','💎','🔔','⚠️','✅','❌','⛔','🚫','🤖','👤','👥','📝','📁','📂','🔒','🔓','🌐'];
-        let cachedGuildEmojis = null;
+        const cachedGuildEmojis = new Map(); // guildId -> emojis[]
 
-        async function loadGuildEmojis(guildId) {
-            if (cachedGuildEmojis) return cachedGuildEmojis;
+        async function loadGuildEmojis(guildId, forceRefresh = false) {
+            if (!forceRefresh && cachedGuildEmojis.has(guildId)) {
+                return cachedGuildEmojis.get(guildId);
+            }
             try {
                 const res = await fetch(`/api/guilds/${guildId}/emojis`);
                 const { data } = await res.json();
-                cachedGuildEmojis = data || [];
-                return cachedGuildEmojis;
+                const list = data || [];
+                cachedGuildEmojis.set(guildId, list);
+                return list;
             } catch (e) {
                 return [];
+            }
+        }
+
+        async function syncGuildData() {
+            if (!currentGuild) return;
+            const btn = event?.target;
+            const originalText = btn?.innerHTML;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ جارٍ المزامنة...';
+            }
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/sync`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    // Force refresh emoji cache
+                    cachedGuildEmojis.delete(currentGuild.guildId);
+                    toast(`✅ تمت المزامنة: ${result.data.emojiCount} إيموجي، ${result.data.channelCount} روم، ${result.data.memberCount} عضو`, 'success');
+                    // Reload panel data to refresh channel list
+                    await loadGuildData(currentGuild.guildId);
+                } else {
+                    toast('❌ ' + (result.error || 'فشل المزامنة'), 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ في الاتصال: ' + e.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText || '🔄 مزامنة مع ديسكورد';
+                }
+            }
+        }
+
+        async function syncGuildEmojisFromPicker(btn) {
+            if (!currentGuild) return;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '⏳...';
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/sync`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    cachedGuildEmojis.delete(currentGuild.guildId);
+                    // Reload fresh emojis
+                    const fresh = await loadGuildEmojis(currentGuild.guildId, true);
+                    // Re-render the server list
+                    const picker = window._emojiPicker;
+                    if (picker) {
+                        const serverList = picker.querySelector('.emoji-server-list');
+                        const tabBtn = picker.querySelector('.emoji-tab[data-tab="server"]');
+                        if (tabBtn) tabBtn.textContent = `🎭 سيرفر (${fresh.length})`;
+                        if (serverList) {
+                            if (fresh.length === 0) {
+                                serverList.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 30px 10px; color: var(--text-muted); font-size: 12px;">لا توجد إيموجيات مخصصة في السيرفر.<br>أضف إيموجيات من إعدادات السيرفر في ديسكورد.</div>';
+                            } else {
+                                serverList.innerHTML = fresh.map(e => `
+                                    <button type="button" class="emoji-btn" data-formatted="${escapeHtml(e.formatted)}" data-search="${escapeHtml(e.name)}" title=":${escapeHtml(e.name)}:" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 42px; transition: all 0.15s;" onmouseover="this.style.background='rgba(88,101,242,0.2)';this.style.borderColor='var(--accent)';" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.borderColor='rgba(255,255,255,0.08)';" onclick="selectEmojiByBtn(this)">
+                                        <img src="${e.url}" style="width: 32px; height: 32px; object-fit: contain;" alt="${escapeHtml(e.name)}">
+                                    </button>
+                                `).join('');
+                            }
+                        }
+                    }
+                    toast(`✅ ${fresh.length} إيموجي`, 'success');
+                } else {
+                    toast('❌ ' + (result.error || 'فشل'), 'error');
+                }
+            } catch (e) {
+                toast('❌ ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         }
 
@@ -1616,7 +1694,10 @@
             picker.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="margin: 0; font-size: 14px;">اختر إيموجي</h4>
-                    <button type="button" onclick="closeEmojiPicker()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 0 8px;">✕</button>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <button type="button" onclick="syncGuildEmojisFromPicker(this)" title="مزامنة من ديسكورد" style="background: none; border: 1px solid rgba(255,255,255,0.1); color: var(--accent); font-size: 12px; padding: 4px 10px; cursor: pointer; border-radius: 6px;">🔄 مزامنة</button>
+                        <button type="button" onclick="closeEmojiPicker()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 0 8px;">✕</button>
+                    </div>
                 </div>
                 <input type="text" class="form-input emoji-search" placeholder="🔍 ابحث..." style="font-size: 13px; padding: 8px 12px; height: 36px; margin-bottom: 10px;" oninput="filterEmojis(this)">
                 <div class="emoji-tabs" style="display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08);">

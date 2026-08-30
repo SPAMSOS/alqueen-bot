@@ -63,6 +63,7 @@ const guildSchema = new mongoose.Schema({
         }]
     },
     panelMessageId: String,
+    panelImageMessages: [{ type: String }], // Message IDs storing panel images (to keep URLs valid)
     stats: {
         totalTickets: { type: Number, default: 0 },
         openTickets: { type: Number, default: 0 },

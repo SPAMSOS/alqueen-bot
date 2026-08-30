@@ -406,6 +406,52 @@ router.get('/guilds/:guildId/emojis', async (req, res) => {
     }
 });
 
+// Force refresh guild data from Discord (emojis, channels, members) - sync
+router.post('/guilds/:guildId/sync', async (req, res) => {
+    try {
+        const client = req.app.locals.client;
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not connected' });
+        }
+
+        const { guildId } = req.params;
+        const botGuild = client.guilds.cache.get(guildId);
+        if (!botGuild) {
+            return res.status(404).json({ success: false, error: 'البوت ليس في هذا السيرفر' });
+        }
+
+        // Force re-fetch emojis from Discord API (clears cache first)
+        await botGuild.emojis.fetch();
+        // Force re-fetch channels
+        await botGuild.channels.fetch();
+        // Force re-fetch members (for role detection)
+        await botGuild.members.fetch().catch(() => {});
+
+        const emojis = botGuild.emojis.cache.map(e => ({
+            id: e.id,
+            name: e.name,
+            animated: e.animated,
+            url: e.imageURL({ size: 64 }),
+            identifier: e.identifier,
+            formatted: e.animated ? `<a:${e.name}:${e.id}>` : `<:${e.name}:${e.id}>`
+        })).sort((a, b) => a.name.localeCompare(b.name));
+
+        res.json({
+            success: true,
+            message: 'تمت المزامنة بنجاح',
+            data: {
+                emojiCount: emojis.length,
+                channelCount: botGuild.channels.cache.size,
+                memberCount: botGuild.memberCount,
+                emojis
+            }
+        });
+    } catch (error) {
+        console.error('Sync error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Update panel channel (where panel is posted)
 router.put('/guilds/:guildId/panel/channel', async (req, res) => {
     try {
@@ -486,24 +532,27 @@ router.post('/guilds/:guildId/upload-image', async (req, res) => {
             });
         }
 
-        // Upload to Discord (hidden message)
+        // Upload to Discord (keep the message - Discord CDN URLs are valid as long as the message exists)
         const msg = await uploadChannel.send({
-            content: '🔒 صورة لوحة (احذفني بعد التحميل - لكن لا تحذف الصورة بعد)',
+            content: '🔒 صورة لوحة ALQUEEN - مخزنة لأغراض اللوحة',
             files: [{ attachment: buffer, name: `panel-${type || 'image'}-${Date.now()}.${ext}` }]
         });
 
-        // Get the URL
+        // Get the URL — Discord CDN URLs require the message to remain
         const attachment = msg.attachments.first();
         const url = attachment?.url;
-
-        // Delete the temp message immediately
-        setTimeout(() => msg.delete().catch(() => {}), 2000);
 
         if (!url) {
             return res.status(500).json({ success: false, error: 'فشل رفع الصورة' });
         }
 
-        res.json({ success: true, url: url });
+        // Track this image-storage message so we don't lose it
+        await Guild.updateOne(
+            { guildId },
+            { $push: { panelImageMessages: msg.id } }
+        ).catch(err => console.error('Track image msg error:', err.message));
+
+        res.json({ success: true, url: url, messageId: msg.id });
     } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ success: false, error: error.message });
