@@ -27,6 +27,7 @@ class WebServer {
 
         this.setupMiddleware();
         this.setupRoutes();
+        this.setupErrorHandler();
         this.setupSocket();
     }
 
@@ -36,8 +37,9 @@ class WebServer {
         }));
 
         this.app.use(cors());
-        this.app.use(express.json());
-        this.app.use(express.urlencoded({ extended: true }));
+        // JSON limit raised to 30MB to support base64 image uploads (up to 25MB images)
+        this.app.use(express.json({ limit: '30mb' }));
+        this.app.use(express.urlencoded({ extended: true, limit: '30mb' }));
         this.app.use(express.static(path.join(__dirname, 'public')));
 
         this.app.use(session({
@@ -90,6 +92,29 @@ class WebServer {
         // Premium page
         this.app.get('/premium', (req, res) => {
             res.sendFile(path.join(__dirname, 'public', 'premium.html'));
+        });
+    }
+
+    setupErrorHandler() {
+        // Express body-parser error handler — return JSON instead of HTML
+        this.app.use((err, req, res, next) => {
+            if (err && err.type === 'entity.too.large') {
+                return res.status(413).json({
+                    success: false,
+                    error: 'حجم الطلب كبير جداً. الحد الأقصى 30MB.'
+                });
+            }
+            if (err && err.type === 'entity.parse.failed') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'صيغة JSON غير صحيحة: ' + (err.message || 'parse error')
+                });
+            }
+            console.error('Server error:', err);
+            res.status(500).json({
+                success: false,
+                error: err?.message || 'Internal server error'
+            });
         });
     }
 
