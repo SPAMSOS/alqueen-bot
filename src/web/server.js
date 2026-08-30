@@ -110,7 +110,7 @@ class WebServer {
             });
         });
 
-        // Send bot stats every 10 seconds
+        // Send bot stats every 10 seconds to all-guilds room
         setInterval(async () => {
             if (this.client && this.client.user) {
                 const stats = await this.client.getStats();
@@ -119,6 +119,15 @@ class WebServer {
                     users: stats.users,
                     ping: stats.ping,
                     uptime: stats.uptime
+                });
+
+                // Also send per-guild stats for connected guilds
+                this.client.guilds.cache.forEach(guild => {
+                    this.io.to(`guild:${guild.id}`).emit('guildStats', {
+                        guildId: guild.id,
+                        memberCount: guild.memberCount,
+                        name: guild.name
+                    });
                 });
             }
         }, 10000);

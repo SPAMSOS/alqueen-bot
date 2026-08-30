@@ -41,7 +41,7 @@ router.get('/stats', async (req, res) => {
     }
 });
 
-// Get user's guilds (with bot)
+// Get user's guilds (with bot) - filtered to only servers user can access
 router.get('/guilds', async (req, res) => {
     try {
         if (!req.session.user) {
@@ -84,7 +84,7 @@ router.get('/guilds', async (req, res) => {
     }
 });
 
-// Get all guilds in DB (admin only)
+// Get ALL guilds from DB (admin only, not filtered by user)
 router.get('/guilds/all', async (req, res) => {
     try {
         if (!req.session.user) {
@@ -259,6 +259,188 @@ router.put('/guilds/:guildId/settings', async (req, res) => {
         await guild.save();
 
         res.json({ success: true, data: guild });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get guild panel info (message ID and channel ID)
+router.get('/guilds/:guildId/panel', async (req, res) => {
+    try {
+        const guild = await Guild.findOne({ guildId: req.params.guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+
+        const client = req.app.locals.client;
+        const panelChannelId = guild.settings?.panelChannelId;
+        let panelMessage = null;
+
+        if (panelChannelId && client) {
+            try {
+                const channel = await client.channels.fetch(panelChannelId);
+                if (channel && channel.lastMessage) {
+                    panelMessage = {
+                        id: channel.lastMessage.id,
+                        content: channel.lastMessage.content,
+                        embeds: channel.lastMessage.embeds?.map(e => e.toJSON())
+                    };
+                }
+            } catch (e) {
+                console.error('Failed to fetch panel message:', e.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            data: {
+                channelId: panelChannelId,
+                message: panelMessage,
+                settings: guild.settings
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update guild panel (edit the Discord message)
+router.put('/guilds/:guildId/panel', async (req, res) => {
+    try {
+        const { guildId } = req.params;
+        const { content, embeds } = req.body;
+        const client = req.app.locals.client;
+
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not connected' });
+        }
+
+        const guild = await Guild.findOne({ guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+
+        const panelChannelId = guild.settings?.panelChannelId;
+        if (!panelChannelId) {
+            return res.status(404).json({ success: false, error: 'Panel channel not configured' });
+        }
+
+        // Fetch the channel and last message
+        const channel = await client.channels.fetch(panelChannelId);
+        if (!channel || !channel.lastMessage) {
+            return res.status(404).json({ success: false, error: 'Panel message not found' });
+        }
+
+        // Edit the message
+        await channel.lastMessage.edit({
+            content: content || channel.lastMessage.content,
+            embeds: embeds || channel.lastMessage.embeds
+        });
+
+        res.json({ success: true, message: 'Panel updated successfully' });
+    } catch (error) {
+        console.error('Panel update error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Delete a ticket from web dashboard
+router.delete('/guilds/:guildId/tickets/:ticketId', async (req, res) => {
+    try {
+        const { guildId, ticketId } = req.params;
+        const ticket = await Ticket.findOne({ ticketId, guildId });
+
+        if (!ticket) {
+            return res.status(404).json({ success: false, error: 'Ticket not found' });
+        }
+
+        // Delete from Discord if channel exists
+        if (req.app.locals.client && ticket.channelId) {
+            try {
+                const channel = await req.app.locals.client.channels.fetch(ticket.channelId);
+                if (channel) await channel.delete();
+            } catch (e) {
+                console.error('Failed to delete channel:', e.message);
+            }
+        }
+
+        // Delete from DB
+        await Ticket.deleteOne({ ticketId, guildId });
+        await TicketLog.deleteMany({ ticketId });
+
+        // Notify via socket
+        const io = req.app.locals.io;
+        if (io) {
+            io.to(`guild:${guildId}`).emit('ticketDeleted', { ticketId, guildId });
+        }
+
+        res.json({ success: true, message: 'Ticket deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get guild members for ticket assignment
+router.get('/guilds/:guildId/members', async (req, res) => {
+    try {
+        const { guildId } = req.params;
+        const client = req.app.locals.client;
+
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not connected' });
+        }
+
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+
+        const members = await guild.members.fetch();
+        const memberList = members.map(m => ({
+            id: m.id,
+            username: m.user.username,
+            tag: m.user.tag,
+            displayName: m.displayName,
+            avatar: m.user.displayAvatarURL({ size: 64 }),
+            roles: m.roles.cache.map(r => ({ id: r.id, name: r.name })),
+            isAdmin: m.permissions.has('Administrator')
+        }));
+
+        res.json({ success: true, data: memberList });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update ticket status
+router.put('/tickets/:ticketId/status', async (req, res) => {
+    try {
+        const { ticketId } = req.params;
+        const { status } = req.body;
+
+        const ticket = await Ticket.findOne({ ticketId });
+        if (!ticket) {
+            return res.status(404).json({ success: false, error: 'Ticket not found' });
+        }
+
+        ticket.status = status;
+        if (status === 'closed') {
+            ticket.closedAt = new Date();
+        }
+
+        await ticket.save();
+
+        // Notify via socket
+        const io = req.app.locals.io;
+        if (io) {
+            io.to(`guild:${ticket.guildId}`).emit('ticketUpdated', {
+                ticketId,
+                guildId: ticket.guildId,
+                status
+            });
+        }
+
+        res.json({ success: true, data: ticket });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

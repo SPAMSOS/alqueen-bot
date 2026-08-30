@@ -44,15 +44,127 @@
             z-index: 0;
         }
 
-        .container {
+        .layout {
             display: grid;
-            grid-template-columns: 260px 1fr;
+            grid-template-columns: 280px 240px 1fr;
             min-height: 100vh;
             position: relative;
             z-index: 1;
         }
 
-        /* Sidebar */
+        /* Servers Sidebar (left, Discord-style) */
+        .servers-sidebar {
+            background: rgba(10, 10, 15, 0.95);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px 10px;
+            overflow-y: auto;
+            height: 100vh;
+        }
+
+        .servers-sidebar::-webkit-scrollbar { width: 4px; }
+        .servers-sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+
+        .servers-header {
+            text-align: center;
+            padding: 8px 0 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 12px;
+        }
+
+        .servers-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+        }
+
+        .server-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        .server-item:hover {
+            background: rgba(88, 101, 242, 0.12);
+        }
+
+        .server-item.active {
+            background: linear-gradient(135deg, rgba(88, 101, 242, 0.25), rgba(124, 58, 237, 0.2));
+            box-shadow: inset 0 0 0 1px rgba(88, 101, 242, 0.4);
+        }
+
+        .server-item.active::before {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 4px;
+        }
+
+        .server-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            flex-shrink: 0;
+            color: white;
+            overflow: hidden;
+        }
+
+        .server-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .server-info {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .server-name {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .server-status {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 2px;
+        }
+
+        .server-status .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .server-status.offline .dot { background: var(--text-muted); }
+
+        /* Main sidebar */
         .sidebar {
             background: rgba(20, 20, 29, 0.7);
             backdrop-filter: blur(20px);
@@ -213,7 +325,10 @@
             justify-content: center;
             font-weight: 700;
             font-size: 12px;
+            overflow: hidden;
         }
+
+        .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
         /* Stats Grid */
         .stats {
@@ -256,11 +371,7 @@
             transform: scaleX(1);
         }
 
-        .stat-icon {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
+        .stat-icon { font-size: 28px; margin-bottom: 8px; }
         .stat-value {
             font-size: 28px;
             font-weight: 900;
@@ -268,14 +379,8 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+        .stat-label { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
 
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        /* Section */
         .section-title {
             font-size: 18px;
             font-weight: 700;
@@ -283,6 +388,209 @@
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        /* Guild Header */
+        .guild-header {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            padding: 20px 24px;
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-elevated));
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+
+        .guild-header-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 900;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .guild-header-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+        .guild-header-info { flex: 1; min-width: 0; }
+
+        .guild-header-name {
+            font-size: 22px;
+            font-weight: 900;
+            margin-bottom: 4px;
+        }
+
+        .guild-header-meta {
+            color: var(--text-muted);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .guild-header-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Form */
+        .form-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 24px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 14px;
+            transition: border 0.2s;
+        }
+
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-textarea { min-height: 100px; resize: vertical; font-family: inherit; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .btn {
+            padding: 10px 22px;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: white;
+            box-shadow: 0 4px 14px rgba(88, 101, 242, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(88, 101, 242, 0.4);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        .btn-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover { background: rgba(16, 185, 129, 0.25); }
+
+        /* Tickets Table */
+        .tickets-table {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .tickets-table table { width: 100%; border-collapse: collapse; }
+        .tickets-table th {
+            background: var(--bg-secondary);
+            padding: 12px 16px;
+            text-align: right;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tickets-table td {
+            padding: 14px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 14px;
+        }
+        .tickets-table tr:hover { background: rgba(88, 101, 242, 0.04); }
+
+        .status-tag {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .status-tag.open { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .status-tag.closed { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+        .status-tag.pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover { color: var(--text-primary); }
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: white;
+            border-color: transparent;
         }
 
         /* Activity Feed */
@@ -302,13 +610,8 @@
             transition: background 0.2s;
         }
 
-        .activity-item:hover {
-            background: rgba(88, 101, 242, 0.04);
-        }
-
-        .activity-item:last-child {
-            border-bottom: none;
-        }
+        .activity-item:hover { background: rgba(88, 101, 242, 0.04); }
+        .activity-item:last-child { border-bottom: none; }
 
         .activity-icon {
             width: 38px;
@@ -339,92 +642,6 @@
             margin-top: 2px;
         }
 
-        .status-tag {
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
-        .status-tag.open { background: rgba(16, 185, 129, 0.15); color: var(--success); }
-        .status-tag.closed { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
-        .status-tag.pending { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-
-        /* Guild Cards */
-        .guilds-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 14px;
-        }
-
-        .guild-card {
-            background: var(--bg-card);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 14px;
-            padding: 18px;
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-
-        .guild-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--accent);
-            box-shadow: 0 8px 24px rgba(88, 101, 242, 0.2);
-        }
-
-        .guild-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-
-        .guild-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-3));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-weight: 700;
-        }
-
-        .guild-name {
-            font-weight: 700;
-            font-size: 15px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 180px;
-        }
-
-        .guild-id {
-            color: var(--text-muted);
-            font-size: 11px;
-            font-family: monospace;
-        }
-
-        .guild-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            padding-top: 14px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .guild-stat-value {
-            font-weight: 800;
-            font-size: 18px;
-            color: var(--accent);
-        }
-
-        .guild-stat-label {
-            color: var(--text-muted);
-            font-size: 11px;
-        }
-
         /* Pages */
         .page { display: none; }
         .page.active { display: block; }
@@ -447,26 +664,115 @@
             animation: spin 1s linear infinite;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Empty */
         .empty {
             text-align: center;
             padding: 40px;
             color: var(--text-muted);
         }
 
-        .empty-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-            opacity: 0.5;
+        .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+
+        /* Tabs (sub-navigation inside guild) */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 24px;
+            overflow-x: auto;
         }
 
+        .tab {
+            padding: 10px 18px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab:hover { color: var(--text-primary); }
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .modal h3 { margin-bottom: 12px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(88, 101, 242, 0.3);
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.error { border-color: var(--danger); box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3); }
+        .toast.success { border-color: var(--success); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3); }
+
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Empty state for guilds */
+        .welcome-screen {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .welcome-icon {
+            font-size: 80px;
+            margin-bottom: 16px;
+        }
+
+        .welcome-title { font-size: 24px; font-weight: 900; margin-bottom: 8px; }
+        .welcome-text { color: var(--text-muted); margin-bottom: 24px; }
+
         /* Responsive */
+        @media (max-width: 1024px) {
+            .layout { grid-template-columns: 240px 1fr; }
+            .servers-sidebar {
+                position: fixed;
+                inset: 0 60% 0 0;
+                transform: translateX(-100%);
+                z-index: 100;
+                transition: transform 0.3s;
+            }
+            .servers-sidebar.open { transform: translateX(0); }
+        }
+
         @media (max-width: 768px) {
-            .container { grid-template-columns: 1fr; }
+            .layout { grid-template-columns: 1fr; }
             .sidebar {
                 position: fixed;
                 inset: 0 0 0 50%;
@@ -480,37 +786,63 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Sidebar -->
+    <div class="layout">
+        <!-- Servers Sidebar (Discord-style, leftmost) -->
+        <aside class="servers-sidebar" id="serversSidebar">
+            <div class="servers-header">
+                <div class="servers-title">السيرفرات</div>
+            </div>
+            <div id="serversList">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </aside>
+
+        <!-- Main Sidebar (navigation) -->
         <aside class="sidebar" id="sidebar">
             <div class="logo">
                 <span class="logo-icon">🎫</span>
                 <span class="logo-text">ALQUEEN</span>
             </div>
 
-            <div class="nav-section">
+            <div class="nav-section" id="globalNav">
                 <div class="nav-title">الرئيسية</div>
                 <div class="nav-item active" data-page="overview">
                     <span class="icon">📊</span>
                     <span>نظرة عامة</span>
                 </div>
-                <div class="nav-item" data-page="guilds">
-                    <span class="icon">🖥️</span>
-                    <span>السيرفرات</span>
-                </div>
                 <div class="nav-item" data-page="tickets">
                     <span class="icon">🎫</span>
-                    <span>التكتات</span>
+                    <span>جميع التكتات</span>
                     <span class="badge" id="openBadge">0</span>
                 </div>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-title">الإعدادات</div>
                 <div class="nav-item" data-page="bot">
                     <span class="icon">🤖</span>
                     <span>معلومات البوت</span>
                 </div>
+            </div>
+
+            <div class="nav-section" id="guildNav" style="display:none;">
+                <div class="nav-title" id="currentGuildTitle">السيرفر</div>
+                <div class="nav-item active" data-page="guild-overview">
+                    <span class="icon">📊</span>
+                    <span>نظرة عامة</span>
+                </div>
+                <div class="nav-item" data-page="guild-tickets">
+                    <span class="icon">🎫</span>
+                    <span>التكتات</span>
+                </div>
+                <div class="nav-item" data-page="guild-settings">
+                    <span class="icon">⚙️</span>
+                    <span>الإعدادات</span>
+                </div>
+                <div class="nav-item" data-page="guild-panel">
+                    <span class="icon">🎨</span>
+                    <span>لوحة التكت</span>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-title">الحساب</div>
                 <div class="nav-item" onclick="logout()">
                     <span class="icon">🚪</span>
                     <span>خروج</span>
@@ -518,7 +850,7 @@
             </div>
         </aside>
 
-        <!-- Main -->
+        <!-- Main Content -->
         <main class="main">
             <div class="header">
                 <h1 id="pageTitle">📊 نظرة عامة</h1>
@@ -534,11 +866,11 @@
                 </div>
             </div>
 
-            <!-- Overview -->
+            <!-- GLOBAL OVERVIEW -->
             <div class="page active" id="page-overview">
                 <div class="stats">
                     <div class="stat-card">
-                        <div class="stat-icon">🌍</div>
+                        <div class="stat-icon">🖥️</div>
                         <div class="stat-value" id="totalGuilds">-</div>
                         <div class="stat-label">السيرفرات</div>
                     </div>
@@ -568,7 +900,6 @@
                         <div class="stat-label">مدة التشغيل</div>
                     </div>
                 </div>
-
                 <h2 class="section-title">📡 النشاط المباشر</h2>
                 <div class="feed" id="activityFeed">
                     <div class="empty">
@@ -578,82 +909,253 @@
                 </div>
             </div>
 
-            <!-- Guilds -->
-            <div class="page" id="page-guilds">
-                <h2 class="section-title">🖥️ السيرفرات (<span id="guildCount">0</span>)</h2>
-                <div class="guilds-grid" id="guildsGrid">
-                    <div class="loading"><div class="spinner"></div></div>
-                </div>
-            </div>
-
-            <!-- Tickets -->
+            <!-- ALL TICKETS (GLOBAL) -->
             <div class="page" id="page-tickets">
-                <h2 class="section-title">🎫 التكتات</h2>
-                <div class="feed" id="ticketsList">
-                    <div class="loading"><div class="spinner"></div></div>
+                <h2 class="section-title">🎫 جميع التكتات</h2>
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-filter="all">الكل</button>
+                    <button class="filter-btn" data-filter="open">مفتوحة</button>
+                    <button class="filter-btn" data-filter="closed">مغلقة</button>
+                </div>
+                <div class="tickets-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>الموضوع</th>
+                                <th>المستخدم</th>
+                                <th>السيرفر</th>
+                                <th>الحالة</th>
+                                <th>التاريخ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ticketsTbody">
+                            <tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Bot Info -->
+            <!-- BOT INFO -->
             <div class="page" id="page-bot">
-                <h2 class="section-title">🤖 معلومات البوت الحية</h2>
-                <div class="guilds-grid" id="botInfo">
-                    <div class="guild-card">
-                        <h3>الحالة</h3>
-                        <p style="margin: 8px 0; color: var(--text-secondary)">
-                            ✅ البوت <span style="color: var(--success)">متصل ونشط</span>
-                        </p>
-                        <div id="botDetails">
-                            <div class="guild-stats" style="grid-template-columns: 1fr 1fr; gap: 16px;">
-                                <div>
-                                    <div class="guild-stat-label">الاسم</div>
-                                    <div class="guild-stat-value" id="botName">-</div>
-                                </div>
-                                <div>
-                                    <div class="guild-stat-label">ID</div>
-                                    <div class="guild-stat-value" id="botId" style="font-size: 14px;">-</div>
-                                </div>
-                                <div>
-                                    <div class="guild-stat-label">السيرفرات</div>
-                                    <div class="guild-stat-value" id="botGuilds">-</div>
-                                </div>
-                                <div>
-                                    <div class="guild-stat-label">المستخدمين</div>
-                                    <div class="guild-stat-value" id="botUsers">-</div>
-                                </div>
-                                <div>
-                                    <div class="guild-stat-label">القنوات</div>
-                                    <div class="guild-stat-value" id="botChannels">-</div>
-                                </div>
-                                <div>
-                                    <div class="guild-stat-label">البنق</div>
-                                    <div class="guild-stat-value" id="botPing">-</div>
-                                </div>
-                            </div>
+                <h2 class="section-title">🤖 معلومات البوت</h2>
+                <div class="form-card">
+                    <div class="form-row">
+                        <div>
+                            <div class="form-label">الاسم</div>
+                            <div style="font-size: 18px; font-weight: 700;" id="botName">-</div>
+                        </div>
+                        <div>
+                            <div class="form-label">ID</div>
+                            <div style="font-size: 14px; font-family: monospace;" id="botId">-</div>
+                        </div>
+                        <div>
+                            <div class="form-label">السيرفرات</div>
+                            <div style="font-size: 18px; font-weight: 700;" id="botGuilds">-</div>
+                        </div>
+                        <div>
+                            <div class="form-label">المستخدمين</div>
+                            <div style="font-size: 18px; font-weight: 700;" id="botUsers">-</div>
+                        </div>
+                        <div>
+                            <div class="form-label">القنوات</div>
+                            <div style="font-size: 18px; font-weight: 700;" id="botChannels">-</div>
+                        </div>
+                        <div>
+                            <div class="form-label">البنق</div>
+                            <div style="font-size: 18px; font-weight: 700;" id="botPing">-</div>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- GUILD OVERVIEW (per-server) -->
+            <div class="page" id="page-guild-overview">
+                <div class="welcome-screen" id="guildWelcome">
+                    <div class="welcome-icon">👈</div>
+                    <div class="welcome-title">اختر سيرفر من الشريط الجانبي</div>
+                    <div class="welcome-text">اختر سيرفر لإدارة إعداداته وتكتاته</div>
+                </div>
+                <div id="guildContent" style="display:none;">
+                    <div class="guild-header" id="guildHeader"></div>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-icon">🎫</div>
+                            <div class="stat-value" id="gTotalTickets">0</div>
+                            <div class="stat-label">إجمالي التكتات</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🟢</div>
+                            <div class="stat-value" id="gOpenTickets">0</div>
+                            <div class="stat-label">مفتوحة</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🔒</div>
+                            <div class="stat-value" id="gClosedTickets">0</div>
+                            <div class="stat-label">مغلقة</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-value" id="gMembers">0</div>
+                            <div class="stat-label">الأعضاء</div>
+                        </div>
+                    </div>
+                    <h2 class="section-title">📈 إحصائيات آخر 7 أيام</h2>
+                    <div class="form-card">
+                        <div id="gStatsChart" style="min-height: 200px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GUILD TICKETS -->
+            <div class="page" id="page-guild-tickets">
+                <div class="guild-header" id="guildHeaderTickets"></div>
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-gfilter="all">الكل</button>
+                    <button class="filter-btn" data-gfilter="open">مفتوحة</button>
+                    <button class="filter-btn" data-gfilter="closed">مغلقة</button>
+                </div>
+                <div class="tickets-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>الموضوع</th>
+                                <th>المستخدم</th>
+                                <th>الحالة</th>
+                                <th>التاريخ</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="guildTicketsTbody">
+                            <tr><td colspan="6" class="loading"><div class="spinner"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- GUILD SETTINGS -->
+            <div class="page" id="page-guild-settings">
+                <div class="guild-header" id="guildHeaderSettings"></div>
+                <h2 class="section-title">⚙️ إعدادات السيرفر</h2>
+                <form id="guildSettingsForm" class="form-card">
+                    <div class="form-group">
+                        <label class="form-label">رسالة الترحيب (تظهر عند فتح تكت جديد)</label>
+                        <textarea class="form-textarea" id="setWelcome" placeholder="مرحباً! سيتم مساعدتك قريباً..."></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">البادئة (Prefix)</label>
+                            <input type="text" class="form-input" id="setPrefix" placeholder="!" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">اللغة</label>
+                            <select class="form-select" id="setLanguage">
+                                <option value="ar">العربية</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">الحد الأقصى للتكتات لكل مستخدم</label>
+                            <input type="number" class="form-input" id="setMaxTickets" min="1" max="20" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">مدة الإغلاق التلقائي (ساعات، 0 = إيقاف)</label>
+                            <input type="number" class="form-input" id="setAutoClose" min="0" value="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">عنوان مخصص (يظهر في Embed)</label>
+                        <input type="text" class="form-input" id="setCustomTitle" placeholder="نظام الدعم الفني">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="setRequireReason"> طلب سبب عند الفتح
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="setRatingEnabled"> تفعيل التقييم
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">💾 حفظ الإعدادات</button>
+                </form>
+            </div>
+
+            <!-- GUILD PANEL EDITOR -->
+            <div class="page" id="page-guild-panel">
+                <div class="guild-header" id="guildHeaderPanel"></div>
+                <h2 class="section-title">🎨 لوحة التكت</h2>
+                <p style="color: var(--text-muted); margin-bottom: 16px;">
+                    عدّل رسالة اللوحة التي يراها الأعضاء في قناة التكت
+                </p>
+                <form id="guildPanelForm" class="form-card">
+                    <div class="form-group">
+                        <label class="form-label">العنوان</label>
+                        <input type="text" class="form-input" id="panelTitle" placeholder="نظام الدعم الفني">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">الوصف (يدعم Markdown)</label>
+                        <textarea class="form-textarea" id="panelDescription" rows="6" placeholder="مرحباً! اختر نوع طلبك من الأزرار أدناه..."></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">اللون (Hex)</label>
+                            <input type="color" class="form-input" id="panelColor" value="#5865F2">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">نص الفوتر</label>
+                            <input type="text" class="form-input" id="panelFooter" placeholder="ALQUEEN Ticket System">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">🎨 تحديث اللوحة</button>
+                    <button type="button" class="btn btn-success" onclick="resendPanel()">📤 إعادة إرسال اللوحة</button>
+                </form>
             </div>
         </main>
     </div>
 
     <script>
         let socket = null;
+        let currentGuild = null;
+        let userGuilds = [];
+        let currentTicketFilter = 'all';
+        let currentGuildTicketFilter = 'all';
         const titles = {
             overview: '📊 نظرة عامة',
-            guilds: '🖥️ السيرفرات',
-            tickets: '🎫 التكتات',
-            bot: '🤖 معلومات البوت'
+            tickets: '🎫 جميع التكتات',
+            bot: '🤖 معلومات البوت',
+            'guild-overview': '📊 نظرة عامة',
+            'guild-tickets': '🎫 التكتات',
+            'guild-settings': '⚙️ الإعدادات',
+            'guild-panel': '🎨 لوحة التكت'
         };
 
         // Init
         document.addEventListener('DOMContentLoaded', async () => {
             const user = await loadUser();
             if (!user) return;
+            userGuilds = user.guilds || [];
             await loadStats();
+            await loadServerList();
             connectSocket();
             setupNav();
+            setupTicketFilters();
+            setupGuildTicketFilters();
+            setupSettingsForm();
+            setupPanelForm();
             setInterval(loadStats, 15000);
+
+            // Check if URL has guild ID
+            const path = window.location.pathname;
+            const match = path.match(/\/dashboard\/(\d+)/);
+            if (match) {
+                selectGuild(match[1]);
+            }
         });
 
         async function loadUser() {
@@ -664,8 +1166,13 @@
                     return null;
                 }
                 const { data } = await res.json();
+                const avatarEl = document.getElementById('userAvatar');
+                if (data.avatarUrl) {
+                    avatarEl.innerHTML = `<img src="${data.avatarUrl}" alt="">`;
+                } else {
+                    avatarEl.textContent = (data.username || 'U').charAt(0).toUpperCase();
+                }
                 document.getElementById('userName').textContent = data.username || data.tag;
-                document.getElementById('userAvatar').textContent = (data.username || 'U').charAt(0).toUpperCase();
                 return data;
             } catch (e) {
                 console.error('Auth error:', e);
@@ -677,13 +1184,11 @@
             try {
                 const res = await fetch('/api/stats');
                 const { data } = await res.json();
-
                 if (data.bot) {
                     document.getElementById('totalGuilds').textContent = data.bot.guilds ?? 0;
                     document.getElementById('totalUsers').textContent = data.bot.users ?? 0;
                     document.getElementById('ping').textContent = (data.bot.ping ?? 0) + 'ms';
                     document.getElementById('uptime').textContent = formatUptime(data.bot.uptime);
-
                     document.getElementById('botName').textContent = data.bot.username || 'ALQUEEN';
                     document.getElementById('botId').textContent = data.bot.id || '-';
                     document.getElementById('botGuilds').textContent = data.bot.guilds ?? 0;
@@ -691,18 +1196,390 @@
                     document.getElementById('botChannels').textContent = data.bot.channels ?? 0;
                     document.getElementById('botPing').textContent = (data.bot.ping ?? 0) + 'ms';
                 }
-
                 if (data.tickets) {
                     document.getElementById('totalTickets').textContent = data.tickets.total ?? 0;
                     document.getElementById('openTickets').textContent = data.tickets.open ?? 0;
                     document.getElementById('openBadge').textContent = data.tickets.open ?? 0;
                 }
+            } catch (e) { console.error('Stats error:', e); }
+        }
 
-                if (data.guilds) {
-                    document.getElementById('guildCount').textContent = data.guilds.total ?? 0;
+        async function loadServerList() {
+            try {
+                const res = await fetch('/api/guilds');
+                const { data } = await res.json();
+                const list = document.getElementById('serversList');
+                if (!data || data.length === 0) {
+                    list.innerHTML = '<div class="empty" style="padding: 20px 10px; font-size: 12px;">لا توجد سيرفرات مع البوت</div>';
+                    return;
+                }
+                list.innerHTML = data.map(g => `
+                    <div class="server-item" data-guild-id="${g.guildId}" onclick="selectGuild('${g.guildId}')">
+                        <div class="server-icon">
+                            ${g.iconUrl ? `<img src="${g.iconUrl}" alt="${escapeHtml(g.name)}">` : escapeHtml((g.name || 'S').charAt(0))}
+                        </div>
+                        <div class="server-info">
+                            <div class="server-name">${escapeHtml(g.name || 'بدون اسم')}</div>
+                            <div class="server-status">
+                                <span class="dot"></span>
+                                ${g.memberCount || 0} عضو
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Load server list:', e);
+            }
+        }
+
+        async function selectGuild(guildId) {
+            const guild = userGuilds.find(g => g.guildId === guildId);
+            if (!guild) {
+                toast('❌ ليس لديك صلاحية لهذا السيرفر', 'error');
+                return;
+            }
+
+            currentGuild = guild;
+            window.history.pushState({}, '', `/dashboard/${guildId}`);
+
+            // Update active server in sidebar
+            document.querySelectorAll('.server-item').forEach(i => i.classList.remove('active'));
+            document.querySelector(`.server-item[data-guild-id="${guildId}"]`)?.classList.add('active');
+
+            // Show guild nav
+            document.getElementById('guildNav').style.display = 'block';
+            document.getElementById('currentGuildTitle').textContent = guild.name;
+
+            // Switch to guild overview
+            switchPage('guild-overview');
+
+            // Load guild data
+            await loadGuildData(guildId);
+        }
+
+        async function loadGuildData(guildId) {
+            try {
+                // Guild details
+                const guildRes = await fetch(`/api/guilds/${guildId}`);
+                const { data: guild } = await guildRes.json();
+
+                // Stats
+                const statsRes = await fetch(`/api/guilds/${guildId}/statistics?days=7`);
+                const { data: stats } = await statsRes.json();
+
+                renderGuildHeader(guild, ['guildHeader', 'guildHeaderTickets', 'guildHeaderSettings', 'guildHeaderPanel']);
+                renderGuildStats(guild, stats);
+
+                // Load tickets, settings, panel
+                await loadGuildTickets(guildId);
+                await loadGuildSettings(guildId);
+                await loadGuildPanel(guildId);
+
+                // Join socket room
+                if (socket) {
+                    socket.emit('joinGuild', guildId);
                 }
             } catch (e) {
-                console.error('Stats error:', e);
+                console.error('Load guild data:', e);
+                toast('❌ فشل تحميل بيانات السيرفر', 'error');
+            }
+        }
+
+        function renderGuildHeader(guild, ids) {
+            const icon = guild.iconUrl || guild.icon
+                ? `<img src="${guild.iconUrl || `https://cdn.discordapp.com/icons/${guild.guildId}/${guild.icon}.${guild.icon?.startsWith('a_') ? 'gif' : 'png'}?size=128`}" alt="">`
+                : escapeHtml((guild.name || 'S').charAt(0));
+
+            const html = `
+                <div class="guild-header-icon">${icon}</div>
+                <div class="guild-header-info">
+                    <div class="guild-header-name">${escapeHtml(guild.name)}</div>
+                    <div class="guild-header-meta">
+                        <span>👥 ${guild.memberCount || 0} عضو</span>
+                        <span>🎫 ${guild.stats?.totalTickets || 0} تكت</span>
+                        <span>🆔 ${guild.guildId}</span>
+                    </div>
+                </div>
+            `;
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = html;
+            });
+        }
+
+        function renderGuildStats(guild, stats) {
+            document.getElementById('gTotalTickets').textContent = guild.stats?.totalTickets || 0;
+            document.getElementById('gOpenTickets').textContent = guild.stats?.openTickets || 0;
+            document.getElementById('gClosedTickets').textContent = guild.stats?.closedTickets || 0;
+            document.getElementById('gMembers').textContent = guild.memberCount || 0;
+
+            // Render simple chart
+            if (stats && stats.daily) {
+                const days = Object.keys(stats.daily).sort();
+                const max = Math.max(...days.map(d => (stats.daily[d]?.created || 0) + (stats.daily[d]?.closed || 0)), 1);
+                const chartHtml = days.reverse().map(d => {
+                    const data = stats.daily[d] || { created: 0, closed: 0 };
+                    const createdH = Math.max((data.created / max) * 160, 4);
+                    const closedH = Math.max((data.closed / max) * 160, 4);
+                    return `
+                        <div style="display: inline-block; width: 60px; text-align: center; margin: 0 4px; vertical-align: bottom;">
+                            <div style="display: flex; align-items: flex-end; justify-content: center; height: 180px; gap: 2px;">
+                                <div style="width: 18px; height: ${createdH}px; background: linear-gradient(180deg, #5865F2, #7c3aed); border-radius: 4px 4px 0 0;" title="مفتوحة: ${data.created}"></div>
+                                <div style="width: 18px; height: ${closedH}px; background: linear-gradient(180deg, #10b981, #059669); border-radius: 4px 4px 0 0;" title="مغلقة: ${data.closed}"></div>
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${d.split('-').slice(1).join('/')}</div>
+                        </div>
+                    `;
+                }).join('');
+                document.getElementById('gStatsChart').innerHTML = `
+                    <div style="display: flex; align-items: flex-end; justify-content: center; flex-wrap: wrap; gap: 4px; padding: 16px 0;">
+                        ${chartHtml}
+                    </div>
+                    <div style="display: flex; gap: 20px; justify-content: center; margin-top: 16px; font-size: 12px; color: var(--text-muted);">
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #5865F2; border-radius: 3px; vertical-align: middle;"></span> مفتوحة</span>
+                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #10b981; border-radius: 3px; vertical-align: middle;"></span> مغلقة</span>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadGuildTickets(guildId) {
+            try {
+                const res = await fetch(`/api/guilds/${guildId}/tickets?limit=100`);
+                const { data } = await res.json();
+                renderGuildTickets(data || []);
+            } catch (e) {
+                console.error('Load guild tickets:', e);
+            }
+        }
+
+        function renderGuildTickets(tickets) {
+            const filtered = currentGuildTicketFilter === 'all'
+                ? tickets
+                : tickets.filter(t => t.status === currentGuildTicketFilter);
+
+            const tbody = document.getElementById('guildTicketsTbody');
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty"><div class="empty-icon">🎫</div><p>لا توجد تكتات</p></td></tr>';
+                return;
+            }
+            tbody.innerHTML = filtered.map(t => `
+                <tr>
+                    <td>#${escapeHtml(t.ticketId)}</td>
+                    <td>${escapeHtml(t.subject || 'بدون عنوان')}</td>
+                    <td>${escapeHtml(t.userTag || 'مستخدم')}</td>
+                    <td><span class="status-tag ${t.status}">${t.status === 'open' ? 'مفتوح' : 'مغلق'}</span></td>
+                    <td style="font-size: 12px; color: var(--text-muted);">${new Date(t.createdAt).toLocaleString('ar')}</td>
+                    <td>
+                        ${t.status === 'open' ? `<button class="btn btn-sm btn-danger" onclick="closeTicket('${t.ticketId}')">🔒 إغلاق</button>` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteTicket('${t.ticketId}')">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadGuildSettings(guildId) {
+            try {
+                const res = await fetch(`/api/guilds/${guildId}`);
+                const { data } = await res.json();
+                const s = data.settings || {};
+                document.getElementById('setWelcome').value = s.welcomeMessage || '';
+                document.getElementById('setPrefix').value = s.prefix || '!';
+                document.getElementById('setLanguage').value = s.language || 'ar';
+                document.getElementById('setMaxTickets').value = s.maxTicketsPerUser || 5;
+                document.getElementById('setAutoClose').value = s.autoCloseDelay || 0;
+                document.getElementById('setCustomTitle').value = s.customTitle || '';
+                document.getElementById('setRequireReason').checked = s.requireReason !== false;
+                document.getElementById('setRatingEnabled').checked = s.ratingEnabled !== false;
+            } catch (e) {
+                console.error('Load settings:', e);
+            }
+        }
+
+        async function loadGuildPanel(guildId) {
+            try {
+                const res = await fetch(`/api/guilds/${guildId}/panel`);
+                const { data } = await res.json();
+                const embed = data?.message?.embeds?.[0] || {};
+                document.getElementById('panelTitle').value = embed.title || '';
+                document.getElementById('panelDescription').value = embed.description || '';
+                document.getElementById('panelColor').value = embed.color ? '#' + embed.color.toString(16).padStart(6, '0') : '#5865F2';
+                document.getElementById('panelFooter').value = embed.footer?.text || '';
+            } catch (e) {
+                console.error('Load panel:', e);
+            }
+        }
+
+        async function closeTicket(ticketId) {
+            if (!confirm('هل تريد إغلاق هذا التكت؟')) return;
+            try {
+                const res = await fetch(`/api/tickets/${ticketId}/close`, { method: 'POST' });
+                if (res.ok) {
+                    toast('✅ تم إغلاق التكت', 'success');
+                    if (currentGuild) loadGuildTickets(currentGuild.guildId);
+                } else {
+                    toast('❌ فشل إغلاق التكت', 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ في الاتصال', 'error');
+            }
+        }
+
+        async function deleteTicket(ticketId) {
+            if (!confirm('هل تريد حذف هذا التكت نهائياً؟')) return;
+            if (!currentGuild) return;
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/tickets/${ticketId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    toast('✅ تم حذف التكت', 'success');
+                    loadGuildTickets(currentGuild.guildId);
+                } else {
+                    toast('❌ فشل حذف التكت', 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ في الاتصال', 'error');
+            }
+        }
+
+        async function resendPanel() {
+            if (!currentGuild) return;
+            toast('📤 يتم إعادة إرسال اللوحة...', 'success');
+            // TODO: implement resend endpoint
+        }
+
+        function setupSettingsForm() {
+            document.getElementById('guildSettingsForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentGuild) return;
+                const data = {
+                    welcomeMessage: document.getElementById('setWelcome').value,
+                    prefix: document.getElementById('setPrefix').value,
+                    language: document.getElementById('setLanguage').value,
+                    maxTicketsPerUser: parseInt(document.getElementById('setMaxTickets').value),
+                    autoCloseDelay: parseInt(document.getElementById('setAutoClose').value),
+                    customTitle: document.getElementById('setCustomTitle').value,
+                    requireReason: document.getElementById('setRequireReason').checked,
+                    ratingEnabled: document.getElementById('setRatingEnabled').checked
+                };
+                try {
+                    const res = await fetch(`/api/guilds/${currentGuild.guildId}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    if (res.ok) {
+                        toast('✅ تم حفظ الإعدادات', 'success');
+                    } else {
+                        toast('❌ فشل الحفظ', 'error');
+                    }
+                } catch (e) {
+                    toast('❌ خطأ في الاتصال', 'error');
+                }
+            });
+        }
+
+        function setupPanelForm() {
+            document.getElementById('guildPanelForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentGuild) return;
+                const color = parseInt(document.getElementById('panelColor').value.replace('#', ''), 16);
+                const embed = {
+                    title: document.getElementById('panelTitle').value,
+                    description: document.getElementById('panelDescription').value,
+                    color: color,
+                    footer: { text: document.getElementById('panelFooter').value }
+                };
+                try {
+                    const res = await fetch(`/api/guilds/${currentGuild.guildId}/panel`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ embeds: [embed] })
+                    });
+                    if (res.ok) {
+                        toast('✅ تم تحديث اللوحة', 'success');
+                    } else {
+                        toast('❌ فشل التحديث', 'error');
+                    }
+                } catch (e) {
+                    toast('❌ خطأ في الاتصال', 'error');
+                }
+            });
+        }
+
+        function setupNav() {
+            document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+                item.addEventListener('click', () => {
+                    switchPage(item.dataset.page);
+                });
+            });
+        }
+
+        function switchPage(page) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+            document.getElementById(`page-${page}`)?.classList.add('active');
+            document.getElementById('pageTitle').textContent = titles[page] || page;
+
+            if (page === 'tickets') loadGlobalTickets();
+            if (page === 'guild-overview' && currentGuild) {
+                document.getElementById('guildWelcome').style.display = 'none';
+                document.getElementById('guildContent').style.display = 'block';
+            } else if (page === 'guild-overview' && !currentGuild) {
+                document.getElementById('guildWelcome').style.display = 'block';
+                document.getElementById('guildContent').style.display = 'none';
+            }
+        }
+
+        function setupTicketFilters() {
+            document.querySelectorAll('#page-tickets .filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#page-tickets .filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentTicketFilter = btn.dataset.filter;
+                    loadGlobalTickets();
+                });
+            });
+        }
+
+        function setupGuildTicketFilters() {
+            document.querySelectorAll('#page-guild-tickets .filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#page-guild-tickets .filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentGuildTicketFilter = btn.dataset.gfilter;
+                    if (currentGuild) loadGuildTickets(currentGuild.guildId);
+                });
+            });
+        }
+
+        async function loadGlobalTickets() {
+            try {
+                const res = await fetch(`/api/tickets?limit=100`);
+                const { data } = await res.json();
+                const filtered = currentTicketFilter === 'all'
+                    ? data
+                    : data.filter(t => t.status === currentTicketFilter);
+                const tbody = document.getElementById('ticketsTbody');
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty"><div class="empty-icon">🎫</div><p>لا توجد تكتات</p></td></tr>';
+                    return;
+                }
+                tbody.innerHTML = filtered.map(t => {
+                    const g = userGuilds.find(ug => ug.guildId === t.guildId);
+                    return `
+                        <tr onclick="selectGuild('${t.guildId}')" style="cursor: pointer;">
+                            <td>#${escapeHtml(t.ticketId)}</td>
+                            <td>${escapeHtml(t.subject || 'بدون عنوان')}</td>
+                            <td>${escapeHtml(t.userTag || 'مستخدم')}</td>
+                            <td>${escapeHtml(g?.name || t.guildId)}</td>
+                            <td><span class="status-tag ${t.status}">${t.status === 'open' ? 'مفتوح' : 'مغلق'}</span></td>
+                            <td style="font-size: 12px; color: var(--text-muted);">${new Date(t.createdAt).toLocaleString('ar')}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('Load tickets:', e);
             }
         }
 
@@ -721,119 +1598,48 @@
 
             socket.on('ticketCreated', (data) => {
                 addActivity({
-                    icon: 'create',
-                    emoji: '🎫',
+                    icon: 'create', emoji: '🎫',
                     title: `تكت جديد #${data.ticketId}`,
                     subtitle: `بواسطة ${data.user} • ${data.subject || 'بدون عنوان'}`,
                     time: 'الآن'
                 });
                 loadStats();
+                if (currentGuild && data.guildId === currentGuild.guildId) {
+                    loadGuildTickets(currentGuild.guildId);
+                }
             });
 
             socket.on('ticketClosed', (data) => {
                 addActivity({
-                    icon: 'close',
-                    emoji: '🔒',
+                    icon: 'close', emoji: '🔒',
                     title: `تكت مغلق #${data.ticketId}`,
                     subtitle: data.reason || 'بدون سبب',
                     time: 'الآن'
                 });
                 loadStats();
-            });
-        }
-
-        function setupNav() {
-            document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-                item.addEventListener('click', () => {
-                    const page = item.dataset.page;
-                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                    item.classList.add('active');
-                    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                    document.getElementById(`page-${page}`).classList.add('active');
-                    document.getElementById('pageTitle').textContent = titles[page] || page;
-
-                    if (page === 'guilds') loadGuilds();
-                    if (page === 'tickets') loadTickets();
-                });
-            });
-        }
-
-        async function loadGuilds() {
-            try {
-                const res = await fetch('/api/guilds');
-                const { data } = await res.json();
-                const grid = document.getElementById('guildsGrid');
-
-                if (!data || data.length === 0) {
-                    grid.innerHTML = '<div class="empty"><div class="empty-icon">🖥️</div><p>لا توجد سيرفرات في قاعدة البيانات</p></div>';
-                    return;
+                if (currentGuild && data.guildId === currentGuild.guildId) {
+                    loadGuildTickets(currentGuild.guildId);
                 }
+            });
 
-                grid.innerHTML = data.map(g => `
-                    <div class="guild-card">
-                        <div class="guild-header">
-                            <div class="guild-icon">${(g.name || 'S').charAt(0)}</div>
-                            <div style="min-width: 0; flex: 1;">
-                                <div class="guild-name">${g.name || 'بدون اسم'}</div>
-                                <div class="guild-id">${g.guildId}</div>
-                            </div>
-                        </div>
-                        <div class="guild-stats">
-                            <div>
-                                <div class="guild-stat-value">${g.stats?.totalTickets || 0}</div>
-                                <div class="guild-stat-label">تكت</div>
-                            </div>
-                            <div>
-                                <div class="guild-stat-value">${g.stats?.openTickets || 0}</div>
-                                <div class="guild-stat-label">مفتوح</div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (e) {
-                console.error('Load guilds:', e);
-            }
-        }
-
-        async function loadTickets() {
-            try {
-                const res = await fetch('/api/tickets?limit=50');
-                const { data } = await res.json();
-                const list = document.getElementById('ticketsList');
-
-                if (!data || data.length === 0) {
-                    list.innerHTML = '<div class="empty"><div class="empty-icon">🎫</div><p>لا توجد تكتات</p></div>';
-                    return;
+            socket.on('ticketDeleted', (data) => {
+                if (currentGuild && data.guildId === currentGuild.guildId) {
+                    loadGuildTickets(currentGuild.guildId);
                 }
-
-                list.innerHTML = data.map(t => `
-                    <div class="activity-item">
-                        <div class="activity-icon ${t.status === 'open' ? 'ticket' : 'close'}">${t.status === 'open' ? '🎫' : '🔒'}</div>
-                        <div class="activity-content">
-                            <div class="activity-title">#${t.ticketId} - ${t.subject || 'بدون عنوان'}</div>
-                            <div class="activity-time">${t.userTag || 'مستخدم'} • ${new Date(t.createdAt).toLocaleString('ar')}</div>
-                        </div>
-                        <span class="status-tag ${t.status}">${t.status === 'open' ? 'مفتوح' : t.status === 'closed' ? 'مغلق' : t.status}</span>
-                    </div>
-                `).join('');
-            } catch (e) {
-                console.error('Load tickets:', e);
-            }
+            });
         }
 
         function addActivity(a) {
             const feed = document.getElementById('activityFeed');
-            // Remove empty state
             const empty = feed.querySelector('.empty');
             if (empty) empty.remove();
-
             const item = document.createElement('div');
             item.className = 'activity-item';
             item.innerHTML = `
                 <div class="activity-icon ${a.icon}">${a.emoji}</div>
                 <div class="activity-content">
-                    <div class="activity-title">${a.title}</div>
-                    <div class="activity-time">${a.subtitle} • ${a.time}</div>
+                    <div class="activity-title">${escapeHtml(a.title)}</div>
+                    <div class="activity-time">${escapeHtml(a.subtitle)} • ${a.time}</div>
                 </div>
             `;
             feed.insertBefore(item, feed.firstChild);
@@ -845,6 +1651,21 @@
             const h = Math.floor(u.total / 3600000);
             const m = Math.floor((u.total % 3600000) / 60000);
             return `${h}h ${m}m`;
+        }
+
+        function escapeHtml(text) {
+            if (text == null) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        function toast(msg, type = 'success') {
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
         }
 
         async function logout() {
