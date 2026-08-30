@@ -41,6 +41,38 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+// Public landing page stats (no auth required)
+router.get('/public/stats', async (req, res) => {
+    try {
+        const client = req.app.locals.client;
+        const totalGuilds = client?.guilds?.cache?.size || 0;
+        const totalTickets = await Ticket.countDocuments();
+        const closedTickets = await Ticket.countDocuments({ status: 'closed' });
+        const totalUsers = client?.users?.cache?.size || 0;
+
+        // Calculate satisfaction rate from tickets with ratings
+        const ratedTickets = await Ticket.countDocuments({ 'rating.score': { $exists: true, $ne: null } });
+        const positiveRatings = await Ticket.countDocuments({ 'rating.score': { $gte: 4 } });
+        const satisfactionRate = ratedTickets > 0 ? Math.round((positiveRatings / ratedTickets) * 100) : 100;
+
+        res.json({
+            success: true,
+            data: {
+                guilds: totalGuilds,
+                tickets: totalTickets,
+                closedTickets: closedTickets,
+                users: totalUsers,
+                satisfaction: satisfactionRate
+            }
+        });
+    } catch (error) {
+        res.json({
+            success: true,
+            data: { guilds: 0, tickets: 0, closedTickets: 0, users: 0, satisfaction: 100 }
+        });
+    }
+});
+
 // Get user's guilds (with bot) - filtered to only servers user can access
 router.get('/guilds', async (req, res) => {
     try {
