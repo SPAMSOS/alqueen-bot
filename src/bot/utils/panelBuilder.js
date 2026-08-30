@@ -68,9 +68,22 @@ async function sendOrUpdatePanel(client, channel, panelSettings, guildName) {
                 return { message: msg, action: 'updated' };
             }
         } catch (e) {
-            // Message deleted, send new
+            // Message deleted, try to find another panel message
         }
     }
+
+    // Try to find a recent message from the bot with components (likely the panel)
+    try {
+        const recent = await channel.messages.fetch({ limit: 10 });
+        const botMsg = recent.find(m =>
+            m.author.id === client.user.id &&
+            m.components && m.components.length > 0
+        );
+        if (botMsg) {
+            await botMsg.edit(payload);
+            return { message: botMsg, action: 'updated' };
+        }
+    } catch (e) {}
 
     const msg = await channel.send(payload);
     return { message: msg, action: 'sent' };

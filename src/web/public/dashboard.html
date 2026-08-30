@@ -1090,10 +1090,20 @@
             <div class="page" id="page-guild-panel">
                 <div class="guild-header" id="guildHeaderPanel"></div>
                 <h2 class="section-title">🎨 لوحة التكت</h2>
-                <p style="color: var(--text-muted); margin-bottom: 16px;">
-                    عدّل رسالة اللوحة التي يراها الأعضاء في قناة التكت
-                </p>
+
+                <div id="panelSetupWarning" class="form-card" style="display:none; border-color: var(--warning); background: rgba(245, 158, 11, 0.08);">
+                    <h3 style="color: var(--warning); margin-bottom: 10px;">⚠️ لم يتم إعداد النظام</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 12px;">شغّل أمر <code>/setup</code> في سيرفرك بديسكورد أولاً، أو اختر قناة موجودة أدناه.</p>
+                </div>
+
                 <form id="guildPanelForm" class="form-card">
+                    <div class="form-group">
+                        <label class="form-label">📍 قناة اللوحة (اختر روم)</label>
+                        <select class="form-select" id="panelChannel">
+                            <option value="">-- اختر قناة --</option>
+                        </select>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label">العنوان</label>
                         <input type="text" class="form-input" id="panelTitle" placeholder="نظام الدعم الفني">
@@ -1112,13 +1122,26 @@
                             <input type="text" class="form-input" id="panelFooter" placeholder="ALQUEEN Ticket System">
                         </div>
                     </div>
+
                     <div class="form-group">
-                        <label class="form-label">رابط صورة كبيرة (Banner) - اختياري</label>
-                        <input type="url" class="form-input" id="panelImage" placeholder="https://i.imgur.com/example.png (يدعم GIF متحركة)">
+                        <label class="form-label">🖼️ صورة كبيرة (Banner) - ارفع من جهازك</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="file" class="form-input" id="panelImageFile" accept="image/*,.gif" style="flex: 1;">
+                            <button type="button" class="btn btn-sm btn-success" onclick="uploadPanelImage()">📤 رفع</button>
+                        </div>
+                        <div id="panelImagePreview" style="margin-top: 8px;"></div>
+                        <input type="hidden" id="panelImage">
+                        <small style="color: var(--text-muted);">يدعم PNG, JPG, GIF متحركة</small>
                     </div>
+
                     <div class="form-group">
-                        <label class="form-label">رابط صورة صغيرة (Thumbnail) - اختياري</label>
-                        <input type="url" class="form-input" id="panelThumbnail" placeholder="https://i.imgur.com/example.png">
+                        <label class="form-label">🖼️ صورة صغيرة (Thumbnail)</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="file" class="form-input" id="panelThumbnailFile" accept="image/*,.gif" style="flex: 1;">
+                            <button type="button" class="btn btn-sm btn-success" onclick="uploadPanelThumbnail()">📤 رفع</button>
+                        </div>
+                        <div id="panelThumbnailPreview" style="margin-top: 8px;"></div>
+                        <input type="hidden" id="panelThumbnail">
                     </div>
 
                     <h3 style="margin: 20px 0 10px; font-size: 16px;">🎛️ أزرار التكت (حتى 5)</h3>
@@ -1127,7 +1150,7 @@
 
                     <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                         <button type="submit" class="btn btn-primary">🔄 تحديث في ديسكورد</button>
-                        <button type="button" class="btn btn-success" onclick="resendPanel(false)">📤 إرسال لوحة جديدة</button>
+                        <button type="button" class="btn btn-success" onclick="resendPanel()">📤 إرسال لوحة جديدة</button>
                     </div>
                 </form>
             </div>
@@ -1422,11 +1445,83 @@
                 document.getElementById('panelFooter').value = ps.footer || '';
                 document.getElementById('panelImage').value = ps.image || '';
                 document.getElementById('panelThumbnail').value = ps.thumbnail || '';
+
+                if (ps.image) showImagePreview('panelImagePreview', ps.image);
+                if (ps.thumbnail) showImagePreview('panelThumbnailPreview', ps.thumbnail);
+
+                // Populate channel select
+                const sel = document.getElementById('panelChannel');
+                sel.innerHTML = '<option value="">-- اختر قناة --</option>' +
+                    (data.availableChannels || []).map(c =>
+                        `<option value="${c.id}" ${c.id === data.channelId ? 'selected' : ''}>#${escapeHtml(c.name)}</option>`
+                    ).join('');
+
+                if (data.needsSetup) {
+                    document.getElementById('panelSetupWarning').style.display = 'block';
+                } else {
+                    document.getElementById('panelSetupWarning').style.display = 'none';
+                }
+
                 renderButtons(ps.buttons || []);
             } catch (e) {
                 console.error('Load panel:', e);
             }
         }
+
+        function showImagePreview(elId, url) {
+            const el = document.getElementById(elId);
+            el.innerHTML = `<img src="${url}" style="max-width: 200px; max-height: 100px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);"><br><small style="color: var(--text-muted);">✅ تم الرفع</small>`;
+        }
+
+        async function uploadPanelImage() {
+            const fileInput = document.getElementById('panelImageFile');
+            if (!fileInput.files[0]) {
+                toast('⚠️ اختر صورة أولاً', 'error');
+                return;
+            }
+            await uploadImage(fileInput.files[0], 'banner', 'panelImage', 'panelImagePreview');
+        }
+
+        async function uploadPanelThumbnail() {
+            const fileInput = document.getElementById('panelThumbnailFile');
+            if (!fileInput.files[0]) {
+                toast('⚠️ اختر صورة أولاً', 'error');
+                return;
+            }
+            await uploadImage(fileInput.files[0], 'thumbnail', 'panelThumbnail', 'panelThumbnailPreview');
+        }
+
+        async function uploadImage(file, type, hiddenInputId, previewId) {
+            if (file.size > 8 * 1024 * 1024) {
+                toast('❌ حجم الصورة كبير (الحد 8MB)', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    toast('⏳ جاري الرفع...', 'success');
+                    const res = await fetch(`/api/guilds/${currentGuild.guildId}/upload-image`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageData: e.target.result, type })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        document.getElementById(hiddenInputId).value = result.url;
+                        showImagePreview(previewId, result.url);
+                        toast('✅ تم رفع الصورة', 'success');
+                    } else {
+                        toast('❌ فشل: ' + result.error, 'error');
+                    }
+                } catch (err) {
+                    toast('❌ خطأ: ' + err.message, 'error');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        const POPULAR_EMOJIS = ['🎫','🛒','💰','🛍️','💳','🔧','⚙️','🛠️','💡','❓','❔','📌','📢','💬','📞','🤝','👋','🤚','✋','🎁','🎉','⭐','🌟','✨','🔥','❤️','💖','💯','📊','📈','📉','🎨','🎮','🎯','🏆','👑','💎','🔔','⚠️','✅','❌','⛔','🚫','🤖','👤','👥','📝','📁','📂','🔒','🔓','🌐','🇸🇦','🇦🇪'];
 
         function renderButtons(buttons) {
             const list = document.getElementById('buttonsList');
@@ -1434,20 +1529,75 @@
                 list.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">لا توجد أزرار. أضف زر جديد.</p>';
                 return;
             }
-            list.innerHTML = buttons.map((btn, i) => `
-                <div class="button-row" data-idx="${i}" style="display: grid; grid-template-columns: 40px 1fr 100px 110px 32px; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;">
-                    <input type="text" class="form-input btn-emoji" value="${escapeHtml(btn.emoji || '🎫')}" placeholder="🎫" maxlength="4" style="text-align: center; padding: 6px;">
-                    <input type="text" class="form-input btn-label" value="${escapeHtml(btn.label || '')}" placeholder="اسم الزر (مثال: شراء)" maxlength="80">
-                    <input type="text" class="form-input btn-id" value="${escapeHtml(btn.id || '')}" placeholder="ticket_id" style="font-size: 12px;">
+            list.innerHTML = buttons.map((btn, i) => buildButtonRow(btn, i)).join('');
+        }
+
+        function buildButtonRow(btn, idx) {
+            const id = btn.id || `ticket_${idx}`;
+            const label = btn.label || 'تكت';
+            const emoji = btn.emoji || '🎫';
+            const style = btn.style || 'Primary';
+            return `
+                <div class="button-row" data-idx="${idx}" style="display: grid; grid-template-columns: 40px 1fr 100px 110px 32px; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;">
+                    <div style="position: relative;">
+                        <input type="text" class="form-input btn-emoji" value="${escapeHtml(emoji)}" placeholder="🎫" maxlength="50" style="text-align: center; padding: 6px; cursor: pointer;" readonly onclick="openEmojiPicker(this)">
+                        <div class="emoji-picker" style="display:none; position: absolute; top: 100%; left: 0; z-index: 100; background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; max-width: 280px; max-height: 200px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                            <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;">
+                                ${POPULAR_EMOJIS.map(e => `<button type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px;" onmouseover="this.style.background='rgba(88,101,242,0.2)'" onmouseout="this.style.background='none'" onclick="selectEmoji('${e}', this)">${e}</button>`).join('')}
+                            </div>
+                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);">
+                                <input type="text" class="form-input btn-emoji-custom" placeholder="أو اكتب إيموجي: :custom_emoji: أو 🔫" style="font-size: 12px; padding: 6px;">
+                                <button type="button" class="btn btn-sm btn-primary" style="margin-top: 4px; width: 100%;" onclick="applyCustomEmoji(this)">تطبيق</button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="text" class="form-input btn-label" value="${escapeHtml(label)}" placeholder="اسم الزر (مثال: شراء)" maxlength="80">
+                    <input type="text" class="form-input btn-id" value="${escapeHtml(id)}" placeholder="ticket_id" style="font-size: 12px;">
                     <select class="form-select btn-style" style="padding: 6px;">
-                        <option value="Primary" ${btn.style === 'Primary' ? 'selected' : ''}>🔵 أزرق</option>
-                        <option value="Secondary" ${btn.style === 'Secondary' ? 'selected' : ''}>⚪ رمادي</option>
-                        <option value="Success" ${btn.style === 'Success' ? 'selected' : ''}>🟢 أخضر</option>
-                        <option value="Danger" ${btn.style === 'Danger' ? 'selected' : ''}>🔴 أحمر</option>
+                        <option value="Primary" ${style === 'Primary' ? 'selected' : ''}>🔵 أزرق</option>
+                        <option value="Secondary" ${style === 'Secondary' ? 'selected' : ''}>⚪ رمادي</option>
+                        <option value="Success" ${style === 'Success' ? 'selected' : ''}>🟢 أخضر</option>
+                        <option value="Danger" ${style === 'Danger' ? 'selected' : ''}>🔴 أحمر</option>
                     </select>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="removeButton(${i})" style="padding: 6px 10px;">🗑️</button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" style="padding: 6px 10px;">🗑️</button>
                 </div>
-            `).join('');
+            `;
+        }
+
+        function openEmojiPicker(input) {
+            // Close all other pickers
+            document.querySelectorAll('.emoji-picker').forEach(p => {
+                if (p !== input.nextElementSibling) p.style.display = 'none';
+            });
+            const picker = input.nextElementSibling;
+            picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+
+            // Close when clicking outside
+            setTimeout(() => {
+                const closeFn = (e) => {
+                    if (!picker.contains(e.target) && e.target !== input) {
+                        picker.style.display = 'none';
+                        document.removeEventListener('click', closeFn);
+                    }
+                };
+                document.addEventListener('click', closeFn);
+            }, 0);
+        }
+
+        function selectEmoji(emoji, btn) {
+            const input = btn.closest('.button-row').querySelector('.btn-emoji');
+            input.value = emoji;
+            btn.closest('.emoji-picker').style.display = 'none';
+        }
+
+        function applyCustomEmoji(btn) {
+            const row = btn.closest('.button-row');
+            const customInput = row.querySelector('.btn-emoji-custom');
+            const mainInput = row.querySelector('.btn-emoji');
+            if (customInput.value.trim()) {
+                mainInput.value = customInput.value.trim();
+                btn.closest('.emoji-picker').style.display = 'none';
+            }
         }
 
         function addButton() {
@@ -1460,23 +1610,10 @@
             const empty = list.querySelector('p');
             if (empty) empty.remove();
 
-            const div = document.createElement('div');
-            div.className = 'button-row';
-            div.dataset.idx = current;
-            div.style.cssText = 'display: grid; grid-template-columns: 40px 1fr 100px 110px 32px; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px; background: var(--bg-secondary); border-radius: 8px;';
-            div.innerHTML = `
-                <input type="text" class="form-input btn-emoji" value="🎫" placeholder="🎫" maxlength="4" style="text-align: center; padding: 6px;">
-                <input type="text" class="form-input btn-label" placeholder="اسم الزر" maxlength="80">
-                <input type="text" class="form-input btn-id" value="ticket_${Date.now().toString(36)}" placeholder="ticket_id" style="font-size: 12px;">
-                <select class="form-select btn-style" style="padding: 6px;">
-                    <option value="Primary">🔵 أزرق</option>
-                    <option value="Secondary">⚪ رمادي</option>
-                    <option value="Success">🟢 أخضر</option>
-                    <option value="Danger">🔴 أحمر</option>
-                </select>
-                <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" style="padding: 6px 10px;">🗑️</button>
-            `;
-            list.appendChild(div);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = buildButtonRow({ id: `ticket_${Date.now().toString(36)}`, label: '', emoji: '🎫', style: 'Primary' }, current);
+            const newRow = tempDiv.firstElementChild;
+            list.appendChild(newRow);
         }
 
         function removeButton(idx) {
@@ -1575,7 +1712,8 @@
                     image: document.getElementById('panelImage').value || undefined,
                     thumbnail: document.getElementById('panelThumbnail').value || undefined,
                     footer: document.getElementById('panelFooter').value,
-                    buttons: collectButtons()
+                    buttons: collectButtons(),
+                    channelId: document.getElementById('panelChannel').value || undefined
                 };
                 try {
                     const res = await fetch(`/api/guilds/${currentGuild.guildId}/panel`, {
@@ -1606,7 +1744,8 @@
                 thumbnail: document.getElementById('panelThumbnail').value || undefined,
                 footer: document.getElementById('panelFooter').value,
                 buttons: collectButtons(),
-                sendNew: true
+                sendNew: true,
+                channelId: document.getElementById('panelChannel').value || undefined
             };
             try {
                 const res = await fetch(`/api/guilds/${currentGuild.guildId}/panel`, {
@@ -1617,7 +1756,8 @@
                 if (res.ok) {
                     toast('✅ تم إرسال لوحة جديدة', 'success');
                 } else {
-                    toast('❌ فشل الإرسال', 'error');
+                    const err = await res.json().catch(() => ({}));
+                    toast('❌ فشل: ' + (err.error || 'فشل'), 'error');
                 }
             } catch (e) {
                 toast('❌ خطأ في الاتصال', 'error');

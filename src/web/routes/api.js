@@ -309,18 +309,46 @@ router.get('/guilds/:guildId/panel', async (req, res) => {
         const panelChannelId = guild.settings?.panelChannelId;
         const panelMessageId = guild.panelMessageId;
         let panelMessage = null;
+        let availableChannels = [];
 
-        if (panelChannelId && panelMessageId && client) {
+        if (client) {
+            const botGuild = client.guilds.cache.get(req.params.guildId);
+            if (botGuild) {
+                availableChannels = botGuild.channels.cache
+                    .filter(c => c.isTextBased() && c.permissionsFor(botGuild.members.me)?.has('SendMessages'))
+                    .map(c => ({ id: c.id, name: c.name, type: c.type }))
+                    .slice(0, 50);
+            }
+        }
+
+        if (panelChannelId && client) {
             try {
                 const channel = await client.channels.fetch(panelChannelId);
                 if (channel) {
-                    const msg = await channel.messages.fetch(panelMessageId).catch(() => null);
-                    if (msg) {
-                        panelMessage = {
-                            id: msg.id,
-                            content: msg.content,
-                            embeds: msg.embeds?.map(e => e.toJSON())
-                        };
+                    // Try saved message ID first
+                    if (panelMessageId) {
+                        const msg = await channel.messages.fetch(panelMessageId).catch(() => null);
+                        if (msg) {
+                            panelMessage = {
+                                id: msg.id,
+                                content: msg.content,
+                                embeds: msg.embeds?.map(e => e.toJSON())
+                            };
+                        }
+                    }
+                    // Fallback: find most recent bot message with components
+                    if (!panelMessage) {
+                        const recent = await channel.messages.fetch({ limit: 10 }).catch(() => null);
+                        if (recent) {
+                            const botMsg = recent.find(m => m.author.id === client.user.id && m.components?.length > 0);
+                            if (botMsg) {
+                                panelMessage = {
+                                    id: botMsg.id,
+                                    content: botMsg.content,
+                                    embeds: botMsg.embeds?.map(e => e.toJSON())
+                                };
+                            }
+                        }
                     }
                 }
             } catch (e) {
@@ -333,6 +361,7 @@ router.get('/guilds/:guildId/panel', async (req, res) => {
             data: {
                 channelId: panelChannelId,
                 message: panelMessage,
+                availableChannels: availableChannels,
                 panelSettings: guild.panelSettings || {
                     title: '✨ نظام الدعم الفني الاحترافي ✨',
                     description: 'اختر نوع طلبك من الأزرار أدناه',
@@ -340,10 +369,110 @@ router.get('/guilds/:guildId/panel', async (req, res) => {
                     footer: '🎫 ALQUEEN Ticket System',
                     buttons: DEFAULT_BUTTONS
                 },
-                settings: guild.settings
+                settings: guild.settings,
+                needsSetup: !panelChannelId
             }
         });
     } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update panel channel (where panel is posted)
+router.put('/guilds/:guildId/panel/channel', async (req, res) => {
+    try {
+        const { guildId } = req.params;
+        const { channelId } = req.body;
+
+        const guild = await Guild.findOneAndUpdate(
+            { guildId },
+            { $set: { 'settings.panelChannelId': channelId } },
+            { new: true }
+        );
+
+        // Reset message ID since we changed channel
+        await Guild.updateOne({ guildId }, { $unset: { panelMessageId: 1 } });
+
+        res.json({ success: true, data: guild.settings });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Upload image via Discord (use Discord's CDN as host)
+router.post('/guilds/:guildId/upload-image', async (req, res) => {
+    try {
+        const { guildId } = req.params;
+        const { imageData, type } = req.body; // base64 image data + type ('banner' or 'thumbnail')
+        const client = req.app.locals.client;
+
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not connected' });
+        }
+        if (!imageData) {
+            return res.status(400).json({ success: false, error: 'No image data' });
+        }
+
+        const guild = await Guild.findOne({ guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+
+        // Use the log channel or first available text channel to upload
+        let uploadChannel = null;
+        if (guild.settings?.logChannelId) {
+            uploadChannel = await client.channels.fetch(guild.settings.logChannelId).catch(() => null);
+        }
+        if (!uploadChannel && guild.settings?.transcriptChannelId) {
+            uploadChannel = await client.channels.fetch(guild.settings.transcriptChannelId).catch(() => null);
+        }
+        if (!uploadChannel) {
+            // Fallback: any text channel
+            const botGuild = client.guilds.cache.get(guildId);
+            if (botGuild) {
+                uploadChannel = botGuild.channels.cache.find(c =>
+                    c.isTextBased() && c.permissionsFor(botGuild.members.me)?.has('SendMessages')
+                );
+            }
+        }
+
+        if (!uploadChannel) {
+            return res.status(404).json({ success: false, error: 'لا توجد قناة متاحة لرفع الصورة. شغّل /setup أولاً.' });
+        }
+
+        // Convert base64 to buffer
+        const matches = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (!matches) {
+            return res.status(400).json({ success: false, error: 'Invalid image format' });
+        }
+        const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+
+        // Size limit (8MB for non-nitro, 25MB for nitro)
+        if (buffer.length > 8 * 1024 * 1024) {
+            return res.status(400).json({ success: false, error: 'حجم الصورة كبير (الحد 8MB).' });
+        }
+
+        // Upload to Discord (hidden message)
+        const msg = await uploadChannel.send({
+            content: '🔒 صورة لوحة (احذفني بعد التحميل - لكن لا تحذف الصورة بعد)',
+            files: [{ attachment: buffer, name: `panel-${type || 'image'}-${Date.now()}.${ext}` }]
+        });
+
+        // Get the URL
+        const attachment = msg.attachments.first();
+        const url = attachment?.url;
+
+        // Delete the temp message immediately
+        setTimeout(() => msg.delete().catch(() => {}), 2000);
+
+        if (!url) {
+            return res.status(500).json({ success: false, error: 'فشل رفع الصورة' });
+        }
+
+        res.json({ success: true, url: url });
+    } catch (error) {
+        console.error('Upload error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -379,7 +508,7 @@ router.put('/guilds/:guildId/panel/settings', async (req, res) => {
 router.put('/guilds/:guildId/panel', async (req, res) => {
     try {
         const { guildId } = req.params;
-        const { title, description, color, image, thumbnail, footer, buttons, sendNew } = req.body;
+        const { title, description, color, image, thumbnail, footer, buttons, sendNew, channelId } = req.body;
         const client = req.app.locals.client;
 
         if (!client) {
@@ -391,9 +520,21 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
 
-        const panelChannelId = guild.settings?.panelChannelId;
+        // If user provided a new channelId, update it first
+        let panelChannelId = guild.settings?.panelChannelId;
+        if (channelId && channelId !== panelChannelId) {
+            await Guild.updateOne({ guildId }, {
+                $set: { 'settings.panelChannelId': channelId },
+                $unset: { panelMessageId: 1 }
+            });
+            panelChannelId = channelId;
+        }
+
         if (!panelChannelId) {
-            return res.status(404).json({ success: false, error: 'Panel channel not configured. Run /setup first.' });
+            return res.status(400).json({
+                success: false,
+                error: 'لم يتم تحديد قناة اللوحة. شغّل /setup في السيرفر أولاً أو اختر قناة من الإعدادات.'
+            });
         }
 
         // Update DB settings
@@ -408,22 +549,28 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
             ...(buttons !== undefined && { buttons })
         };
 
-        const channel = await client.channels.fetch(panelChannelId);
+        const channel = await client.channels.fetch(panelChannelId).catch(() => null);
         if (!channel) {
-            return res.status(404).json({ success: false, error: 'Panel channel not found' });
+            return res.status(404).json({
+                success: false,
+                error: 'قناة اللوحة غير موجودة في ديسكورد. تأكد أن البوت موجود في السيرفر.'
+            });
         }
 
+        // Always send new message on sendNew, or if messageId is missing
         let result;
         if (sendNew) {
-            // Send new message
             const { buildPanelEmbed, buildPanelButtons } = require('../../bot/utils/panelBuilder');
             const embed = buildPanelEmbed(newPanelSettings, channel.guild.name);
             const rows = buildPanelButtons(newPanelSettings);
             const msg = await channel.send({ embeds: [embed], components: rows });
             result = { message: msg, action: 'sent' };
         } else {
-            // Update existing
-            result = await sendOrUpdatePanel(client, channel, newPanelSettings, channel.guild.name);
+            // Update existing (or fallback to recent bot message with components)
+            result = await sendOrUpdatePanel(client, channel, {
+                ...newPanelSettings,
+                messageId: guild.panelMessageId
+            }, channel.guild.name);
         }
 
         // Save to DB
@@ -441,6 +588,7 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
             success: true,
             action: result.action,
             messageId: result.message.id,
+            channelId: panelChannelId,
             data: newPanelSettings
         });
     } catch (error) {

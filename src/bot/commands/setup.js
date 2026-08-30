@@ -129,11 +129,21 @@ module.exports = {
             const panelRows = buildPanelButtons({});
 
             const mentionRole = supportRole ? `<@&${supportRole.id}>` : '';
-            await panelChannel.send({
+            const panelMessage = await panelChannel.send({
                 content: `## ✨ مرحباً - اختر تكت من الأزرار\n${mentionRole}`,
                 embeds: [panelEmbed],
                 components: panelRows
             });
+
+            // Save panel message ID for future updates
+            Guild.updateOne(
+                { guildId: interaction.guild.id },
+                { $set: {
+                    panelSettings: panelSettings,
+                    panelMessageId: panelMessage.id
+                }},
+                { maxTimeMS: 5000 }
+            ).catch(err => console.error('Panel message ID save error:', err.message));
 
             await interaction.editReply({
                 embeds: [
