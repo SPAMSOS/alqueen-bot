@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الرخص - ALQUEEN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #14141d 100%);
+            min-height: 100vh;
+            color: #e4e4e7;
+            margin: 0;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .navbar {
+            background: rgba(20, 20, 29, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 20px; }
+        .nav-brand .logo-icon { font-size: 28px; }
+        .nav-menu { display: flex; gap: 20px; align-items: center; list-style: none; padding: 0; margin: 0; }
+        .nav-menu a { color: #e4e4e7; text-decoration: none; font-weight: 600; }
+        .nav-menu a:hover { color: #5865F2; }
+        .btn-discord {
+            background: #5865F2;
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: white !important;
+        }
+        .page-header {
+            padding: 40px 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .page-title {
+            font-size: 32px;
+            font-weight: 900;
+            margin: 0;
+        }
+        .page-title span { color: #5865F2; }
+        .owner-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(88,101,242,0.15);
+            border: 1px solid #5865F2;
+            color: #5865F2;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-right: 10px;
+        }
+        .card {
+            background: #1e1e2a;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #a0a0aa;
+        }
+        .form-input, .form-select {
+            background: #14141d;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #e4e4e7;
+            font-family: inherit;
+            font-size: 14px;
+            width: 100%;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #5865F2;
+        }
+        .btn {
+            background: #5865F2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn:hover { background: #4752c4; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-success { background: #57F287; color: #0a0a0f; }
+        .btn-success:hover { background: #4ad97a; }
+        .btn-danger { background: rgba(237,66,69,0.2); color: #ED4245; }
+        .btn-danger:hover { background: rgba(237,66,69,0.3); }
+        .btn-secondary { background: rgba(255,255,255,0.08); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.12); }
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .filter-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #a0a0aa;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .filter-btn.active { background: #5865F2; color: white; border-color: #5865F2; }
+        .license-row {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 16px;
+            align-items: center;
+            padding: 14px;
+            background: #14141d;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .license-code {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: #5865F2;
+        }
+        .license-meta { font-size: 12px; color: #a0a0aa; margin-top: 4px; }
+        .status-active { color: #57F287; font-weight: 700; }
+        .status-used { color: #57F287; }
+        .status-disabled { color: #ED4245; }
+        .status-available { color: #5865F2; }
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #a0a0aa;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #1e1e2a;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 900;
+            color: #5865F2;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #a0a0aa;
+            margin-top: 4px;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 700;
+            z-index: 9999;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { background: #57F287; color: #0a0a0f; }
+        .toast.error { background: #ED4245; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .guild-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            background: #14141d;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .guild-name { font-weight: 700; font-size: 14px; }
+        .guild-meta { font-size: 11px; color: #a0a0aa; margin-top: 2px; }
+        .guild-meta code { background: rgba(88,101,242,0.15); padding: 1px 6px; border-radius: 4px; color: #5865F2; }
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr; }
+            .license-row { grid-template-columns: 1fr; }
+            .actions { justify-content: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <span class="logo-icon">🎫</span>
+                <span>ALQUEEN</span>
+                <span class="owner-badge">👑 مالك</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/">الرئيسية</a></li>
+                <li><a href="/dashboard">لوحة التحكم</a></li>
+                <li><a href="/auth/logout" style="color: #ED4245;">خروج</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">🔑 <span>إدارة الرخص</span></h1>
+            <button class="btn btn-secondary" onclick="location.reload()">🔄 تحديث</button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-value" id="statActive">0</div>
+                <div class="stat-label">سيرفرات مفعلة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statExpired">0</div>
+                <div class="stat-label">منتهية</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statAvailable">0</div>
+                <div class="stat-label">أكواد متاحة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-label">إجمالي الأكواد</div>
+            </div>
+        </div>
+
+        <!-- Create License -->
+        <div class="card">
+            <h3 class="card-title">➕ إنشاء كود تفعيل جديد</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>المدة (بالأيام)</label>
+                    <input type="number" class="form-input" id="newDays" value="30" min="1" max="3650">
+                </div>
+                <div class="form-group">
+                    <label>ملاحظة (اختياري)</label>
+                    <input type="text" class="form-input" id="newNote" placeholder="مثال: للعميل أحمد">
+                </div>
+                <button class="btn" onclick="createLicense()">🔑 إنشاء</button>
+            </div>
+        </div>
+
+        <!-- Licenses List -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <h3 class="card-title" style="margin: 0;">📋 الأكواد</h3>
+                <div class="filter-tabs">
+                    <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">الكل</button>
+                    <button class="filter-btn" data-filter="available" onclick="setFilter('available')">متاحة</button>
+                    <button class="filter-btn" data-filter="used" onclick="setFilter('used')">مستخدمة</button>
+                </div>
+            </div>
+            <div id="licensesList"></div>
+        </div>
+
+        <!-- Guilds -->
+        <div class="card">
+            <h3 class="card-title">🖥️ سيرفرات البوت</h3>
+            <div id="guildsList"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+        let allLicenses = [];
+        let allGuilds = [];
+
+        async function init() {
+            try {
+                const meRes = await fetch('/api/me');
+                if (!meRes.ok) {
+                    location.href = '/auth/login';
+                    return;
+                }
+                const { data: me } = await meRes.json();
+                if (!me?.isOwner) {
+                    document.querySelector('.container').innerHTML = `
+                        <div class="card" style="text-align: center; padding: 60px 20px;">
+                            <div style="font-size: 48px;">⛔</div>
+                            <h2 style="margin: 16px 0 8px;">هذه الصفحة للمالك فقط</h2>
+                            <p style="color: #a0a0aa;">آيدي حسابك: <code>${me?.id || 'غير معروف'}</code></p>
+                            <p style="color: #a0a0aa; margin-top: 20px;">
+                                <a href="/dashboard" style="color: #5865F2;">← العودة للوحة التحكم</a>
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+                await loadLicenses();
+                await loadGuilds();
+            } catch (e) {
+                toast('❌ خطأ في التحميل', 'error');
+            }
+        }
+
+        async function loadLicenses() {
+            try {
+                const res = await fetch('/api/licenses');
+                if (res.status === 403) { location.href = '/dashboard'; return; }
+                const { data } = await res.json();
+                allLicenses = data || [];
+                renderLicenses();
+                renderStats();
+            } catch (e) {
+                toast('❌ فشل تحميل الأكواد', 'error');
+            }
+        }
+
+        async function loadGuilds() {
+            try {
+                const res = await fetch('/api/licenses/guilds');
+                if (res.status === 403) { location.href = '/dashboard'; return; }
+                const { data } = await res.json();
+                allGuilds = data || [];
+                renderGuilds();
+            } catch (e) {
+                toast('❌ فشل تحميل السيرفرات', 'error');
+            }
+        }
+
+        function renderStats() {
+            const used = allLicenses.filter(l => l.usedBy?.guildId).length;
+            const available = allLicenses.filter(l => !l.usedBy?.guildId && l.isActive !== false).length;
+            const activeGuilds = allGuilds.filter(g => g.status === 'active').length;
+            const expiredGuilds = allGuilds.filter(g => g.status === 'expired').length;
+            document.getElementById('statActive').textContent = activeGuilds;
+            document.getElementById('statExpired').textContent = expiredGuilds;
+            document.getElementById('statAvailable').textContent = available;
+            document.getElementById('statTotal').textContent = allLicenses.length;
+        }
+
+        function renderLicenses() {
+            const filtered = currentFilter === 'all' ? allLicenses
+                : currentFilter === 'available' ? allLicenses.filter(l => !l.usedBy?.guildId && l.isActive !== false)
+                : allLicenses.filter(l => l.usedBy?.guildId);
+
+            const list = document.getElementById('licensesList');
+            if (!filtered.length) {
+                list.innerHTML = '<div class="empty-state">لا توجد أكواد في هذا التصنيف</div>';
+                return;
+            }
+            list.innerHTML = filtered.map(l => {
+                const isUsed = !!l.usedBy?.guildId;
+                const isActive = l.isActive !== false;
+                const status = isUsed
+                    ? '<span class="status-used">✅ مستخدم</span>'
+                    : isActive
+                        ? '<span class="status-available">🟢 متاح</span>'
+                        : '<span class="status-disabled">⛔ معطّل</span>';
+
+                let actions = '';
+                if (!isUsed && isActive) {
+                    actions = `<button class="btn btn-sm btn-danger" onclick="toggleLicense('${l.code}', false)">⛔ تعطيل</button>
+                               <button class="btn btn-sm btn-danger" onclick="deleteLicense('${l.code}')">🗑️</button>`;
+                } else if (!isUsed && !isActive) {
+                    actions = `<button class="btn btn-sm btn-success" onclick="toggleLicense('${l.code}', true)">✅ تفعيل</button>
+                               <button class="btn btn-sm btn-danger" onclick="deleteLicense('${l.code}')">🗑️</button>`;
+                } else {
+                    actions = '<span style="color:#a0a0aa;font-size:12px;">—</span>';
+                }
+
+                return `
+                    <div class="license-row">
+                        <div>
+                            <div class="license-code">${l.code}</div>
+                            <div class="license-meta">⏰ ${l.durationDays} يوم ${l.note ? ' • 📝 ' + esc(l.note) : ''} • أنشئ ${new Date(l.createdAt).toLocaleDateString('ar-EG')}</div>
+                        </div>
+                        <div>
+                            ${status}
+                            ${isUsed ? `<div class="license-meta">في: ${esc(l.usedBy.guildName || l.usedBy.guildId)}<br>ينتهي: ${new Date(l.expiresAt).toLocaleString('ar-EG')}</div>` : ''}
+                        </div>
+                        <div class="actions">${actions}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderGuilds() {
+            const list = document.getElementById('guildsList');
+            if (!allGuilds.length) {
+                list.innerHTML = '<div class="empty-state">لا يوجد سيرفرات مع البوت</div>';
+                return;
+            }
+            const statusColors = { active: '#57F287', expired: '#FEE75C', revoked: '#ED4245', not_activated: '#99AAB5' };
+            const statusEmojis = { active: '✅', expired: '⚠️', revoked: '🚫', not_activated: '⚪' };
+            const statusText = { active: 'مفعل', expired: 'منتهي', revoked: 'معطّل', not_activated: 'غير مفعل' };
+
+            list.innerHTML = allGuilds.map(g => {
+                const color = statusColors[g.status] || '#99AAB5';
+                const emoji = statusEmojis[g.status] || '⚪';
+                const text = statusText[g.status] || g.status;
+                let actions = '';
+                if (g.license?.code) {
+                    if (g.status === 'revoked') {
+                        actions = `<button class="btn btn-sm btn-success" onclick="guildAction('${g.guildId}', 'unrevoke')">✅ إعادة التفعيل</button>`;
+                    } else {
+                        actions = `<button class="btn btn-sm btn-danger" onclick="guildAction('${g.guildId}', 'revoke')">🚫 إيقاف</button>`;
+                    }
+                    actions += ` <button class="btn btn-sm btn-secondary" onclick="guildReset('${g.guildId}', '${esc(g.name)}')">🗑️ مسح</button>`;
+                }
+                return `
+                    <div class="guild-row">
+                        <div>
+                            <div class="guild-name">${esc(g.name)}</div>
+                            <div class="guild-meta">
+                                🆔 ${g.guildId}
+                                ${g.license?.code ? ' • 🔑 <code>' + g.license.code + '</code>' : ''}
+                                ${g.daysLeft > 0 ? ' • ⏰ متبقي ' + g.daysLeft + ' يوم' : g.license?.expiresAt ? ' • ⏰ منتهي' : ''}
+                            </div>
+                        </div>
+                        <div style="color: ${color}; font-weight: 700;">${emoji} ${text}</div>
+                        <div>${actions}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function setFilter(f) {
+            currentFilter = f;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+            renderLicenses();
+        }
+
+        async function createLicense() {
+            const days = parseInt(document.getElementById('newDays').value) || 30;
+            const note = document.getElementById('newNote').value.trim();
+            try {
+                const res = await fetch('/api/licenses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ durationDays: days, note })
+                });
+                const r = await res.json();
+                if (r.success) {
+                    document.getElementById('newNote').value = '';
+                    toast(`✅ تم إنشاء: ${r.data.code}`, 'success');
+                    await loadLicenses();
+                } else {
+                    toast('❌ ' + (r.error || 'فشل'), 'error');
+                }
+            } catch (e) { toast('❌ ' + e.message, 'error'); }
+        }
+
+        async function toggleLicense(code, enable) {
+            const action = enable ? 'enable' : 'disable';
+            try {
+                const res = await fetch(`/api/licenses/${code}/${action}`, { method: 'POST' });
+                const r = await res.json();
+                if (r.success) { toast('✅ ' + r.message, 'success'); await loadLicenses(); }
+                else toast('❌ ' + r.error, 'error');
+            } catch (e) { toast('❌ ' + e.message, 'error'); }
+        }
+
+        async function deleteLicense(code) {
+            if (!confirm(`حذف الكود ${code}؟`)) return;
+            try {
+                const res = await fetch(`/api/licenses/${code}`, { method: 'DELETE' });
+                const r = await res.json();
+                if (r.success) { toast('✅ تم الحذف', 'success'); await loadLicenses(); }
+                else toast('❌ ' + r.error, 'error');
+            } catch (e) { toast('❌ ' + e.message, 'error'); }
+        }
+
+        async function guildAction(guildId, action) {
+            try {
+                const res = await fetch(`/api/licenses/guilds/${guildId}/${action}`, { method: 'POST' });
+                const r = await res.json();
+                if (r.success) { toast('✅ ' + r.message, 'success'); await loadGuilds(); await loadLicenses(); }
+                else toast('❌ ' + r.error, 'error');
+            } catch (e) { toast('❌ ' + e.message, 'error'); }
+        }
+
+        async function guildReset(guildId, name) {
+            if (!confirm(`مسح التفعيل من "${name}"؟\nالكود نفسه يصير متاح للاستخدام مرة ثانية.`)) return;
+            try {
+                const res = await fetch(`/api/licenses/guilds/${guildId}`, { method: 'DELETE' });
+                const r = await res.json();
+                if (r.success) { toast('✅ ' + r.message, 'success'); await loadGuilds(); await loadLicenses(); }
+                else toast('❌ ' + r.error, 'error');
+            } catch (e) { toast('❌ ' + e.message, 'error'); }
+        }
+
+        function toast(msg, type) {
+            const t = document.createElement('div');
+            t.className = 'toast ' + (type || 'success');
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+
+        function esc(s) {
+            if (s == null) return '';
+            return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+        }
+
+        init();
+    </script>
+</body>
+</html>

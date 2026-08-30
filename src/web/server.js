@@ -93,6 +93,14 @@ class WebServer {
         this.app.get('/premium', (req, res) => {
             res.sendFile(path.join(__dirname, 'public', 'premium.html'));
         });
+
+        // License management page (owner only - check on frontend)
+        this.app.get('/licenses', (req, res) => {
+            if (!req.session.user) {
+                return res.redirect('/auth/login');
+            }
+            res.sendFile(path.join(__dirname, 'public', 'licenses.html'));
+        });
     }
 
     setupErrorHandler() {

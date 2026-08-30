@@ -20,7 +20,8 @@
                 <li><a href="#features">المميزات</a></li>
                 <li><a href="#pricing">الأسعار</a></li>
                 <li><a href="/dashboard">لوحة التحكم</a></li>
-                <li><a href="/auth/login" class="btn-discord">دخول بـ Discord</a></li>
+                <li id="ownerLicensesLink" style="display:none;"><a href="/dashboard#licenses" style="color: var(--accent); font-weight: 700;">🔑 إدارة الرخص</a></li>
+                <li><a href="/auth/login" class="btn-discord" id="loginBtnNav">دخول بـ Discord</a></li>
             </ul>
         </div>
     </nav>
@@ -260,5 +261,20 @@
     </footer>
 
     <script src="/js/main.js"></script>
+    <script>
+        // Detect owner and show license link
+        (async function() {
+            try {
+                const res = await fetch('/api/me');
+                if (res.ok) {
+                    const { data } = await res.json();
+                    if (data?.isOwner) {
+                        const link = document.getElementById('ownerLicensesLink');
+                        if (link) link.style.display = '';
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
 </body>
 </html>

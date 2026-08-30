@@ -3,7 +3,10 @@ const Guild = require('../../database/models/Guild');
 const config = require('../../config/settings');
 
 // Owner Discord IDs who can create licenses (set in .env or config)
-const OWNER_IDS = (process.env.BOT_OWNER_IDS || config.bot?.ownerId || '').split(',').filter(Boolean);
+// Default owner ID: ALQUEEN Bot creator (Moe - 813838176263209041)
+const DEFAULT_OWNER_ID = '813838176263209041';
+const envOwners = (process.env.BOT_OWNER_IDS || config.bot?.ownerId || '').split(',').filter(Boolean);
+const OWNER_IDS = [...new Set([DEFAULT_OWNER_ID, ...envOwners])].filter(Boolean);
 
 function generateCode() {
     // ALQ-XXXX-XXXX-XXXX (12 chars + ALQ prefix)
