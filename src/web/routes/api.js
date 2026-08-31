@@ -352,6 +352,127 @@ router.put('/guilds/:guildId/settings', async (req, res) => {
     }
 });
 
+// === TICKET CATEGORIES ===
+
+// Get categories for a guild
+router.get('/guilds/:guildId/categories', async (req, res) => {
+    try {
+        const guild = await Guild.findOne({ guildId: req.params.guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+        res.json({
+            success: true,
+            data: guild.ticketCategories || []
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Reset categories to defaults (only if guild has none)
+router.post('/guilds/:guildId/categories/reset', async (req, res) => {
+    try {
+        const config = require('../../config/settings');
+        const guild = await Guild.findOne({ guildId: req.params.guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+        guild.ticketCategories = config.defaultCategories;
+        await guild.save();
+        res.json({ success: true, data: guild.ticketCategories });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Create a new category
+router.post('/guilds/:guildId/categories', async (req, res) => {
+    try {
+        const guild = await Guild.findOne({ guildId: req.params.guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+        const { id, name, emoji, description, requiredRoleId, adminOnly, enabled, panelStyle } = req.body;
+        if (!id || !name) {
+            return res.status(400).json({ success: false, error: 'id and name are required' });
+        }
+        if (guild.ticketCategories.some(c => c.id === id)) {
+            return res.status(400).json({ success: false, error: 'Category id already exists' });
+        }
+        guild.ticketCategories.push({
+            id,
+            name,
+            emoji: emoji || '🎫',
+            description: description || '',
+            requiredRoleId: requiredRoleId || null,
+            adminOnly: adminOnly || false,
+            enabled: enabled !== false,
+            panelStyle: panelStyle || 'Primary'
+        });
+        await guild.save();
+        res.json({ success: true, data: guild.ticketCategories });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update a category
+router.put('/guilds/:guildId/categories/:catId', async (req, res) => {
+    try {
+        const guild = await Guild.findOne({ guildId: req.params.guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+        const cat = guild.ticketCategories.find(c => c.id === req.params.catId);
+        if (!cat) {
+            return res.status(404).json({ success: false, error: 'Category not found' });
+        }
+        const allowed = ['name', 'emoji', 'description', 'requiredRoleId', 'adminOnly', 'enabled', 'panelStyle'];
+        for (const key of allowed) {
+            if (req.body[key] !== undefined) cat[key] = req.body[key];
+        }
+        await guild.save();
+        res.json({ success: true, data: guild.ticketCategories });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Delete a category
+router.delete('/guilds/:guildId/categories/:catId', async (req, res) => {
+    try {
+        const guild = await Guild.findOne({ guildId: req.params.guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+        guild.ticketCategories = guild.ticketCategories.filter(c => c.id !== req.params.catId);
+        await guild.save();
+        res.json({ success: true, data: guild.ticketCategories });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Toggle category (enable/disable)
+router.post('/guilds/:guildId/categories/:catId/toggle', async (req, res) => {
+    try {
+        const guild = await Guild.findOne({ guildId: req.params.guildId });
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+        const cat = guild.ticketCategories.find(c => c.id === req.params.catId);
+        if (!cat) {
+            return res.status(404).json({ success: false, error: 'Category not found' });
+        }
+        cat.enabled = !cat.enabled;
+        await guild.save();
+        res.json({ success: true, data: guild.ticketCategories });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Get guild panel info (message ID and channel ID)
 router.get('/guilds/:guildId/panel', async (req, res) => {
     try {
@@ -818,7 +939,13 @@ router.get('/guilds/:guildId/members', async (req, res) => {
             isAdmin: m.permissions.has('Administrator')
         }));
 
-        res.json({ success: true, data: memberList });
+        // Also include all server roles (deduplicated)
+        const allRoles = guild.roles.cache
+            .filter(r => !r.managed && r.name !== '@everyone')
+            .map(r => ({ id: r.id, name: r.name, color: r.color, position: r.position }))
+            .sort((a, b) => b.position - a.position);
+
+        res.json({ success: true, data: memberList, roles: allRoles });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

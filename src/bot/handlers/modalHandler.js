@@ -17,49 +17,131 @@ async function handleModal(interaction, client) {
 }
 
 async function handleSubjectModal(interaction, client, customId) {
-    const category = customId.replace('modal_subject_', '');
+    const categoryId = customId.replace('modal_subject_', '');
     const subject = interaction.fields.getTextInputValue('subject');
     const description = interaction.fields.getTextInputValue('description');
 
-    const categoryMap = {
-        'purchase': { name: 'مشاكل الشراء', emoji: '🛒', color: config.colors.primary },
-        'technical': { name: 'مشاكل تقنية', emoji: '🔧', color: config.colors.info },
-        'suggestion': { name: 'اقتراح', emoji: '💡', color: config.colors.success },
-        'other': { name: 'أخرى', emoji: '💬', color: config.colors.warning }
-    };
+    // Get guild settings first so we can resolve the category
+    const guildData = await Guild.findOne({ guildId: interaction.guildId }).maxTimeMS(3000);
 
-    const categoryData = categoryMap[category] || categoryMap.other;
+    // Resolve category: prefer guild.ticketCategories, then config defaults, then legacy
+    let categoryData = null;
+    if (guildData?.ticketCategories?.length) {
+        const found = guildData.ticketCategories.find(c => c.id === categoryId);
+        if (found) {
+            const styleColor = found.panelStyle === 'Success' ? config.colors.success
+                : found.panelStyle === 'Danger' ? config.colors.danger
+                : found.panelStyle === 'Secondary' ? config.colors.info
+                : config.colors.primary;
+            categoryData = {
+                id: found.id,
+                name: found.name,
+                emoji: found.emoji || '🎫',
+                color: styleColor,
+                adminOnly: found.adminOnly || false,
+                requiredRoleId: found.requiredRoleId || null
+            };
+        }
+    }
+    if (!categoryData) {
+        const fromConfig = config.defaultCategories.find(c => c.id === categoryId);
+        if (fromConfig) {
+            const styleColor = fromConfig.panelStyle === 'Success' ? config.colors.success
+                : fromConfig.panelStyle === 'Danger' ? config.colors.danger
+                : fromConfig.panelStyle === 'Secondary' ? config.colors.info
+                : config.colors.primary;
+            categoryData = { ...fromConfig, color: styleColor };
+        }
+    }
+    // Legacy fallback
+    if (!categoryData) {
+        const categoryMap = {
+            'purchase': { name: 'مشاكل الشراء', emoji: '🛒', color: config.colors.primary, adminOnly: false, requiredRoleId: null },
+            'technical': { name: 'مشاكل تقنية', emoji: '🔧', color: config.colors.info, adminOnly: false, requiredRoleId: null },
+            'suggestion': { name: 'اقتراح', emoji: '💡', color: config.colors.success, adminOnly: false, requiredRoleId: null },
+            'other': { name: 'أخرى', emoji: '💬', color: config.colors.warning, adminOnly: false, requiredRoleId: null }
+        };
+        categoryData = { id: categoryId, ...(categoryMap[categoryId] || categoryMap.other) };
+    }
 
     await interaction.deferReply({ ephemeral: true });
 
     try {
-        // Get guild settings
-        const guildData = await Guild.findOne({ guildId: interaction.guildId });
         const parentCategory = guildData?.settings?.ticketCategoryId;
 
         // Create ticket channel
         const ticketNumber = Math.floor(1000 + Math.random() * 9000);
         const channelName = `ticket-${ticketNumber}`;
 
+        // Build permission overwrites: hide from everyone, show to user + required roles
+        const permissionOverwrites = [
+            {
+                id: interaction.guild.roles.everyone,
+                deny: [PermissionsBitField.Flags.ViewChannel]
+            },
+            {
+                id: interaction.user.id,
+                allow: [
+                    PermissionsBitField.Flags.ViewChannel,
+                    PermissionsBitField.Flags.SendMessages,
+                    PermissionsBitField.Flags.ReadMessageHistory,
+                    PermissionsBitField.Flags.AttachFiles
+                ]
+            }
+        ];
+
+        // If category has a specific required role, only that role can see (adminOnly)
+        if (categoryData.requiredRoleId) {
+            // Add the specific role with view
+            permissionOverwrites.push({
+                id: categoryData.requiredRoleId,
+                allow: [
+                    PermissionsBitField.Flags.ViewChannel,
+                    PermissionsBitField.Flags.SendMessages,
+                    PermissionsBitField.Flags.ReadMessageHistory
+                ]
+            });
+            // If adminOnly, support role is explicitly denied
+            if (categoryData.adminOnly && guildData?.settings?.supportRoleId) {
+                permissionOverwrites.push({
+                    id: guildData.settings.supportRoleId,
+                    deny: [
+                        PermissionsBitField.Flags.ViewChannel,
+                        PermissionsBitField.Flags.SendMessages
+                    ]
+                });
+            }
+        }
+
+        // For non-adminOnly categories, support role can see
+        if (!categoryData.adminOnly && !categoryData.requiredRoleId && guildData?.settings?.supportRoleId) {
+            permissionOverwrites.push({
+                id: guildData.settings.supportRoleId,
+                allow: [
+                    PermissionsBitField.Flags.ViewChannel,
+                    PermissionsBitField.Flags.SendMessages,
+                    PermissionsBitField.Flags.ReadMessageHistory
+                ]
+            });
+        }
+
+        // Admin role always sees everything
+        if (guildData?.settings?.adminRoleId) {
+            permissionOverwrites.push({
+                id: guildData.settings.adminRoleId,
+                allow: [
+                    PermissionsBitField.Flags.ViewChannel,
+                    PermissionsBitField.Flags.SendMessages,
+                    PermissionsBitField.Flags.ReadMessageHistory
+                ]
+            });
+        }
+
         const channel = await interaction.guild.channels.create({
             name: channelName,
             type: ChannelType.GuildText,
             parent: parentCategory,
-            permissionOverwrites: [
-                {
-                    id: interaction.guild.roles.everyone,
-                    deny: [PermissionsBitField.Flags.ViewChannel]
-                },
-                {
-                    id: interaction.user.id,
-                    allow: [
-                        PermissionsBitField.Flags.ViewChannel,
-                        PermissionsBitField.Flags.SendMessages,
-                        PermissionsBitField.Flags.ReadMessageHistory,
-                        PermissionsBitField.Flags.AttachFiles
-                    ]
-                }
-            ]
+            permissionOverwrites
         });
 
         // Save ticket to database (non-blocking)
@@ -70,7 +152,7 @@ async function handleSubjectModal(interaction, client, customId) {
             userId: interaction.user.id,
             userTag: interaction.user.tag,
             category: {
-                id: category,
+                id: categoryData.id,
                 name: categoryData.name,
                 emoji: categoryData.emoji
             },
@@ -93,14 +175,12 @@ async function handleSubjectModal(interaction, client, customId) {
             guildData.save().catch(err => console.error('Guild save:', err.message));
         }
 
-        // Create welcome embed - styled like the example image
+        // Create welcome embed
         const welcomeEmbed = new EmbedBuilder()
             .setColor(categoryData.color)
             .setTitle('اهلا')
             .setDescription(`
 **مرحباً بك في الدعم**
-
-يرجى اختيار نوع التذكرة
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 **الموضوع:** ${subject}
@@ -112,14 +192,13 @@ ${description}
 > 🆔 رقم التكت: \`T-${ticketNumber}\`
 > 👤 أنشأ بواسطة: ${interaction.user}
 > 📅 التاريخ: <t:${Math.floor(Date.now() / 1000)}:F>
-> 🎯 الفئة: ${categoryData.name}
+> 🎯 الفئة: ${categoryData.emoji} ${categoryData.name}
 
 سيتم الرد عليك من قبل فريق الدعم قريباً. كن صبوراً! ⏳
             `)
             .setFooter({ text: 'ALQUEEN Ticket System' })
             .setTimestamp();
 
-        // Use panel banner image if set
         if (guildData?.panelSettings?.image) {
             welcomeEmbed.setImage(guildData.panelSettings.image);
         }
@@ -144,14 +223,18 @@ ${description}
                     .setStyle(ButtonStyle.Secondary)
             );
 
-        const supportRole = interaction.guild.roles.cache.find(r =>
-            r.name.toLowerCase().includes('support') ||
-            r.name.includes('دعم') ||
-            r.name.includes('الدعم')
-        );
+        // Mention: support role (for normal), or required role (for adminOnly)
+        let mention = `${interaction.user}`;
+        if (categoryData.adminOnly && categoryData.requiredRoleId) {
+            mention += ` | <@&${categoryData.requiredRoleId}>`;
+        } else if (guildData?.settings?.supportRoleId) {
+            // Find support role by ID
+            const supportRole = interaction.guild.roles.cache.get(guildData.settings.supportRoleId);
+            if (supportRole) mention += ` | <@&${supportRole.id}>`;
+        }
 
         await channel.send({
-            content: `${interaction.user}${supportRole ? ` | <@&${supportRole.id}>` : ''}`,
+            content: mention,
             embeds: [welcomeEmbed],
             components: [buttons]
         });
@@ -166,7 +249,7 @@ ${description}
                 userTag: interaction.user.tag,
                 type: 'user'
             },
-            details: { category, subject }
+            details: { category: categoryData.id, subject }
         });
 
         // Send log to log channel
@@ -181,7 +264,7 @@ ${description}
                             .addFields(
                                 { name: 'العضو', value: interaction.user.tag, inline: true },
                                 { name: 'رقم التكت', value: `T-${ticketNumber}`, inline: true },
-                                { name: 'الفئة', value: categoryData.name, inline: true },
+                                { name: 'الفئة', value: `${categoryData.emoji} ${categoryData.name}`, inline: true },
                                 { name: 'الموضوع', value: subject, inline: false }
                             )
                             .setTimestamp()
@@ -205,6 +288,7 @@ ${description}
                 ticketId: ticket.ticketId,
                 user: interaction.user.tag,
                 subject,
+                category: categoryData,
                 timestamp: new Date()
             });
         }

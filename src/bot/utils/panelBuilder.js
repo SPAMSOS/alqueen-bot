@@ -1,11 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-
-const DEFAULT_BUTTONS = [
-    { id: 'ticket_purchase', label: '🛒 شراء', emoji: '🛒', style: 'Primary', order: 0 },
-    { id: 'ticket_technical', label: '🔧 تقنية', emoji: '🔧', style: 'Secondary', order: 1 },
-    { id: 'ticket_suggestion', label: '💡 اقتراح', emoji: '💡', style: 'Success', order: 2 },
-    { id: 'ticket_other', label: '💬 أخرى', emoji: '💬', style: 'Danger', order: 3 }
-];
+const config = require('../../config/settings');
 
 const styleMap = {
     Primary: ButtonStyle.Primary,
@@ -13,6 +7,11 @@ const styleMap = {
     Success: ButtonStyle.Success,
     Danger: ButtonStyle.Danger
 };
+
+// Default fallback (used only if guild has no categories AND no custom buttons)
+const DEFAULT_BUTTONS = [
+    { id: 'ticket_support', label: '🎫 دعم فني', emoji: '🎫', style: 'Primary', order: 0 }
+];
 
 function buildPanelEmbed(panelSettings, guildName) {
     const color = parseInt((panelSettings?.color || '5865F2').replace('#', ''), 16);
@@ -42,12 +41,37 @@ function buildPanelEmbed(panelSettings, guildName) {
     return embed;
 }
 
+// Build buttons from CATEGORIES (new system) — each category = one button
+function buildCategoryButtons(categories) {
+    const enabled = (categories || []).filter(c => c.enabled);
+    if (enabled.length === 0) {
+        // Fall back to default categories from config
+        return buildCategoryButtons(config.defaultCategories);
+    }
+
+    // Discord max 5 buttons per row, max 5 rows (25 total)
+    const rows = [];
+    for (let i = 0; i < enabled.length; i += 5) {
+        const row = new ActionRowBuilder();
+        enabled.slice(i, i + 5).forEach(cat => {
+            const builder = new ButtonBuilder()
+                .setCustomId(`ticket_${cat.id}`)
+                .setLabel((cat.name || 'فتح تكت').slice(0, 80))
+                .setStyle(styleMap[cat.panelStyle] || ButtonStyle.Primary);
+            if (cat.emoji) builder.setEmoji(cat.emoji);
+            row.addComponents(builder);
+        });
+        rows.push(row);
+    }
+    return rows;
+}
+
+// Legacy: build from panelSettings.buttons
 function buildPanelButtons(panelSettings) {
     const buttons = panelSettings?.buttons?.length
         ? [...panelSettings.buttons].sort((a, b) => (a.order || 0) - (b.order || 0))
         : DEFAULT_BUTTONS;
 
-    // Discord max 5 buttons per row
     const rows = [];
     for (let i = 0; i < buttons.length; i += 5) {
         const row = new ActionRowBuilder();
@@ -64,13 +88,16 @@ function buildPanelButtons(panelSettings) {
     return rows;
 }
 
-async function sendOrUpdatePanel(client, channel, panelSettings, guildName) {
+async function sendOrUpdatePanel(client, channel, panelSettings, guildName, categories) {
+    // Prefer categories over legacy buttons
+    const useCategories = categories && categories.length > 0;
     const embed = buildPanelEmbed(panelSettings, guildName);
-    const rows = buildPanelButtons(panelSettings);
+    const rows = useCategories
+        ? buildCategoryButtons(categories)
+        : buildPanelButtons(panelSettings);
     const payload = { embeds: [embed], components: rows };
 
-    // If the image is a Discord CDN URL, we need to attach the file
-    // because Discord's image proxy doesn't always resolve CDN URLs reliably in embeds
+    // If the image is a Discord CDN URL, attach the file
     let files = null;
     if (panelSettings?.image) {
         const imgUrl = String(panelSettings.image).trim();
@@ -84,12 +111,10 @@ async function sendOrUpdatePanel(client, channel, panelSettings, guildName) {
                         : imgUrl.includes('.webp') ? 'webp'
                         : 'jpg';
                     files = [{ attachment: buffer, name: `panel-image.${ext}` }];
-                    // Use attachment:// reference in embed
                     embed.setImage(`attachment://panel-image.${ext}`);
                 }
             } catch (e) {
                 console.error('Failed to attach panel image:', e.message);
-                // Fall back to URL-based image
             }
         }
     }
@@ -105,11 +130,11 @@ async function sendOrUpdatePanel(client, channel, panelSettings, guildName) {
                 return { message: msg, action: 'updated' };
             }
         } catch (e) {
-            // Message deleted, try to find another panel message
+            // Message deleted
         }
     }
 
-    // Try to find a recent message from the bot with components (likely the panel)
+    // Try to find a recent message from the bot with components
     try {
         const recent = await channel.messages.fetch({ limit: 10 });
         const botMsg = recent.find(m =>
@@ -126,4 +151,10 @@ async function sendOrUpdatePanel(client, channel, panelSettings, guildName) {
     return { message: msg, action: 'sent' };
 }
 
-module.exports = { buildPanelEmbed, buildPanelButtons, sendOrUpdatePanel, DEFAULT_BUTTONS };
+module.exports = {
+    buildPanelEmbed,
+    buildPanelButtons,
+    buildCategoryButtons,
+    sendOrUpdatePanel,
+    DEFAULT_BUTTONS
+};

@@ -46,6 +46,46 @@ const config = {
         ratingEnabled: true
     },
 
+    // Default ticket categories (used when guild has no custom categories)
+    defaultCategories: [
+        {
+            id: 'support',
+            name: 'دعم فني',
+            emoji: '🎫',
+            description: 'للمساعدة في حل المشاكل التقنية',
+            adminOnly: false,
+            enabled: true,
+            panelStyle: 'Primary'
+        },
+        {
+            id: 'admin',
+            name: 'إدارة عليا',
+            emoji: '👑',
+            description: 'للشكاوى والطلبات الإدارية المهمة',
+            adminOnly: true,
+            enabled: true,
+            panelStyle: 'Danger'
+        },
+        {
+            id: 'event',
+            name: 'فعاليات',
+            emoji: '🎉',
+            description: 'لتقديم طلبات الفعاليات والمسابقات',
+            adminOnly: true,
+            enabled: true,
+            panelStyle: 'Success'
+        },
+        {
+            id: 'groups',
+            name: 'قروبات',
+            emoji: '🏆',
+            description: 'للتقديم على إنشاء قروب أو الانضمام',
+            adminOnly: true,
+            enabled: true,
+            panelStyle: 'Secondary'
+        }
+    ],
+
     // Embed Colors
     colors: {
         primary: 0x5865F2,      // Blurple

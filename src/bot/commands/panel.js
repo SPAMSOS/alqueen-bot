@@ -52,7 +52,8 @@ module.exports = {
                 client,
                 channel,
                 guild.panelSettings,
-                interaction.guild.name
+                interaction.guild.name,
+                guild.ticketCategories
             );
 
             // Save message id for future updates

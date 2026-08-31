@@ -44,32 +44,65 @@ async function handleButton(interaction, client) {
 }
 
 async function handleTicketCreation(interaction, client, customId) {
-    // Try to find a custom button category from guild panel settings
+    // Extract category id from customId: e.g. "ticket_support" -> "support"
+    const categoryId = customId.replace(/^ticket_/, '');
+
+    // Look up the category from guild settings OR config defaults
     let category = null;
+    let guild = null;
     try {
-        const guild = await Guild.findOne({ guildId: interaction.guildId }).maxTimeMS(3000);
-        if (guild?.panelSettings?.buttons?.length) {
-            const btn = guild.panelSettings.buttons.find(b => b.id === customId);
-            if (btn) {
-                category = {
-                    name: btn.id.replace(/^ticket_/, '') || 'custom',
-                    emoji: btn.emoji || '🎫',
-                    label: (btn.label || 'تكت').replace(/^[^\w]+/, '').trim() || 'تكت'
-                };
-            }
-        }
+        guild = await Guild.findOne({ guildId: interaction.guildId }).maxTimeMS(3000);
     } catch (e) {}
 
-    // Fallback to default categories
+    // 1) Try guild.ticketCategories (new system)
+    if (guild?.ticketCategories?.length) {
+        const found = guild.ticketCategories.find(c => c.id === categoryId && c.enabled);
+        if (found) {
+            category = {
+                id: found.id,
+                name: found.name,
+                emoji: found.emoji || '🎫',
+                label: found.name,
+                adminOnly: found.adminOnly || false,
+                requiredRoleId: found.requiredRoleId || null
+            };
+        }
+    }
+
+    // 2) Try legacy panelSettings.buttons
+    if (!category && guild?.panelSettings?.buttons?.length) {
+        const btn = guild.panelSettings.buttons.find(b => b.id === customId);
+        if (btn) {
+            category = {
+                id: categoryId,
+                name: categoryId,
+                emoji: btn.emoji || '🎫',
+                label: (btn.label || 'تكت').replace(/^[^\w]+/, '').trim() || 'تكت',
+                adminOnly: false,
+                requiredRoleId: null
+            };
+        }
+    }
+
+    // 3) Fallback to config defaults
+    if (!category) {
+        const fromConfig = config.defaultCategories.find(c => c.id === categoryId);
+        if (fromConfig) {
+            category = { ...fromConfig, label: fromConfig.name };
+        }
+    }
+
+    // 4) Legacy fallback
     if (!category) {
         const categoryMap = {
-            'ticket_purchase': { name: 'purchase', emoji: '🛒', label: 'مشاكل الشراء' },
-            'ticket_technical': { name: 'technical', emoji: '🔧', label: 'مشاكل تقنية' },
-            'ticket_suggestion': { name: 'suggestion', emoji: '💡', label: 'اقتراح' },
-            'ticket_other': { name: 'other', emoji: '💬', label: 'أخرى' }
+            'purchase': { id: 'purchase', name: 'purchase', emoji: '🛒', label: 'مشاكل الشراء' },
+            'technical': { id: 'technical', name: 'technical', emoji: '🔧', label: 'مشاكل تقنية' },
+            'suggestion': { id: 'suggestion', name: 'suggestion', emoji: '💡', label: 'اقتراح' },
+            'other': { id: 'other', name: 'other', emoji: '💬', label: 'أخرى' }
         };
-        category = categoryMap[customId];
+        category = categoryMap[categoryId];
     }
+
     if (!category) return;
 
     // Check if user already has an open ticket
@@ -91,9 +124,9 @@ async function handleTicketCreation(interaction, client, customId) {
         });
     }
 
-    // Show modal for subject
+    // Show modal for subject (pass categoryId in customId)
     const modal = new ModalBuilder()
-        .setCustomId(`modal_subject_${category.name}`)
+        .setCustomId(`modal_subject_${category.id}`)
         .setTitle(`تكت جديد - ${category.label}`);
 
     const subjectInput = new TextInputBuilder()

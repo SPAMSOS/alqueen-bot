@@ -843,6 +843,10 @@
                     <span class="icon">🎨</span>
                     <span>لوحة التكت</span>
                 </div>
+                <div class="nav-item" data-page="guild-categories">
+                    <span class="icon">🏷️</span>
+                    <span>تصنيفات التكتات</span>
+                </div>
             </div>
 
             <div class="nav-section">
@@ -1167,6 +1171,78 @@
                 </form>
             </div>
 
+            <!-- GUILD CATEGORIES MANAGEMENT -->
+            <div class="page" id="page-guild-categories">
+                <div class="guild-header" id="guildHeaderCategories"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <h2 class="section-title" style="margin: 0;">🏷️ تصنيفات التكتات</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-sm" onclick="loadGuildCategories()" style="background: rgba(88,101,242,0.15); border: 1px solid var(--accent); color: var(--accent);">🔄 تحديث</button>
+                        <button type="button" class="btn btn-sm btn-warning" onclick="resetCategoriesToDefaults()">↺ استعادة الافتراضية</button>
+                    </div>
+                </div>
+
+                <div class="form-card" style="margin-bottom: 16px; background: rgba(88,101,242,0.08); border-color: var(--accent);">
+                    <h3 style="margin: 0 0 6px; font-size: 14px; color: var(--accent);">💡 كيف يعمل النظام</h3>
+                    <p style="margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.7;">
+                        كل تصنيف له زر منفصل في لوحة التكت. التصنيفات العادية (مثل دعم فني) تظهر للسبورت. التصنيفات الإدارية
+                        (<strong>إدارة عليا</strong>) تكون مرئية فقط للأدمن وأصحاب الرتبة المحددة. اضغط ➕ لإضافة تصنيف أو
+                        🔄 لتفعيل/تعطيل الموجود.
+                    </p>
+                </div>
+
+                <div id="categoriesList"></div>
+
+                <div class="form-card" style="margin-top: 20px;">
+                    <h3 style="margin-bottom: 14px; font-size: 16px;">➕ إضافة تصنيف جديد</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">المعرف (ID)</label>
+                            <input type="text" class="form-input" id="newCatId" placeholder="billing, vip, reports...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">الاسم المعروض</label>
+                            <input type="text" class="form-input" id="newCatName" placeholder="مثال: استفسار الفواتير">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">الإيموجي</label>
+                            <input type="text" class="form-input" id="newCatEmoji" placeholder="💰" maxlength="4">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">لون الزر</label>
+                            <select class="form-select" id="newCatStyle">
+                                <option value="Primary">🔵 أزرق (Primary)</option>
+                                <option value="Secondary">⚪ رمادي (Secondary)</option>
+                                <option value="Success">🟢 أخضر (Success)</option>
+                                <option value="Danger">🔴 أحمر (Danger)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">الوصف</label>
+                        <input type="text" class="form-input" id="newCatDesc" placeholder="لمساعدة المستخدمين في فهم هذا النوع">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">رتبة مطلوبة (اختياري)</label>
+                            <select class="form-select" id="newCatRole">
+                                <option value="">-- الكل يستطيع فتحه --</option>
+                            </select>
+                            <small style="color: var(--text-muted);">رتبة ديسكورد التي لها صلاحية رؤية التكتات من هذا النوع</small>
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="newCatAdminOnly" style="width: 18px; height: 18px;">
+                            <label for="newCatAdminOnly" class="form-label" style="margin: 0; cursor: pointer;">
+                                🔒 إداري فقط (السبورت لا يراه)
+                            </label>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="addNewCategory()">➕ إضافة التصنيف</button>
+                </div>
+            </div>
+
             <!-- License Management Page (Owner Only) -->
             <div class="page" id="page-licenses">
                 <h2 class="section-title">🔑 إدارة الرخص</h2>
@@ -1394,6 +1470,7 @@
                 await loadGuildTickets(guildId);
                 await loadGuildSettings(guildId);
                 await loadGuildPanel(guildId);
+                await loadGuildCategories(guildId);
 
                 // Join socket room
                 if (socket) {
@@ -1578,6 +1655,198 @@
                 renderButtons(ps.buttons || []);
             } catch (e) {
                 console.error('Load panel:', e);
+            }
+        }
+
+        // ===== TICKET CATEGORIES =====
+        let currentCategories = [];
+
+        async function loadGuildCategories(guildId) {
+            try {
+                if (!guildId) guildId = currentGuild?.guildId;
+                if (!guildId) return;
+                const res = await fetch(`/api/guilds/${guildId}/categories`);
+                const { data } = await res.json();
+                currentCategories = data || [];
+                renderCategories();
+                // Populate role select
+                await populateCategoryRoleSelect(guildId);
+            } catch (e) {
+                console.error('Load categories:', e);
+            }
+        }
+
+        async function populateCategoryRoleSelect(guildId) {
+            try {
+                const res = await fetch(`/api/guilds/${guildId}/members`);
+                const json = await res.json();
+                // Get server-level roles (top-level `roles` field, not per-member)
+                const roles = json.roles || [];
+                const sel = document.getElementById('newCatRole');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">-- الكل يستطيع فتحه --</option>' +
+                    roles.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
+            } catch (e) {
+                console.error('Populate roles:', e);
+            }
+        }
+
+        function renderCategories() {
+            const container = document.getElementById('categoriesList');
+            if (!container) return;
+            if (currentCategories.length === 0) {
+                container.innerHTML = `
+                    <div class="form-card" style="text-align: center; padding: 40px;">
+                        <h3 style="color: var(--text-muted);">لا توجد تصنيفات</h3>
+                        <p style="color: var(--text-muted);">أضف تصنيفك الأول من النموذج بالأسفل</p>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = currentCategories.map(cat => {
+                const styleColors = {
+                    Primary: '#5865F2',
+                    Success: '#57F287',
+                    Danger: '#ED4245',
+                    Secondary: '#4F545C'
+                };
+                const color = styleColors[cat.panelStyle] || '#5865F2';
+                return `
+                <div class="form-card" style="border-left: 4px solid ${color}; ${cat.enabled ? '' : 'opacity: 0.5;'}">
+                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                <span style="font-size: 24px;">${cat.emoji || '🎫'}</span>
+                                <strong style="font-size: 16px;">${escapeHtml(cat.name)}</strong>
+                                ${cat.adminOnly ? '<span class="badge" style="background: #ED4245;">🔒 إداري</span>' : '<span class="badge" style="background: #5865F2;">👥 عام</span>'}
+                                ${!cat.enabled ? '<span class="badge" style="background: #4F545C;">معطل</span>' : ''}
+                            </div>
+                            <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 4px;">
+                                <code>ticket_${escapeHtml(cat.id)}</code>
+                                ${cat.requiredRoleId ? ` • رتبة: <code>${escapeHtml(cat.requiredRoleId)}</code>` : ''}
+                            </div>
+                            ${cat.description ? `<p style="color: var(--text-secondary); font-size: 13px; margin: 4px 0 0;">${escapeHtml(cat.description)}</p>` : ''}
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-sm" onclick="editCategory('${cat.id}')">✏️ تعديل</button>
+                            <button type="button" class="btn btn-sm" onclick="toggleCategory('${cat.id}')">${cat.enabled ? '⏸️ تعطيل' : '▶️ تفعيل'}</button>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteCategory('${cat.id}')">🗑️ حذف</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function addNewCategory() {
+            const id = document.getElementById('newCatId').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            const name = document.getElementById('newCatName').value.trim();
+            const emoji = document.getElementById('newCatEmoji').value.trim() || '🎫';
+            const description = document.getElementById('newCatDesc').value.trim();
+            const panelStyle = document.getElementById('newCatStyle').value;
+            const requiredRoleId = document.getElementById('newCatRole').value || null;
+            const adminOnly = document.getElementById('newCatAdminOnly').checked;
+
+            if (!id) { toast('⚠️ أدخل معرف إنجليزي (مثل: support, billing)', 'error'); return; }
+            if (!name) { toast('⚠️ أدخل اسم التصنيف', 'error'); return; }
+
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/categories`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, name, emoji, description, requiredRoleId, adminOnly, panelStyle, enabled: true })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    currentCategories = result.data;
+                    renderCategories();
+                    // Clear form
+                    document.getElementById('newCatId').value = '';
+                    document.getElementById('newCatName').value = '';
+                    document.getElementById('newCatEmoji').value = '';
+                    document.getElementById('newCatDesc').value = '';
+                    document.getElementById('newCatRole').value = '';
+                    document.getElementById('newCatAdminOnly').checked = false;
+                    toast('✅ تم إضافة التصنيف', 'success');
+                } else {
+                    toast('❌ ' + result.error, 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ: ' + e.message, 'error');
+            }
+        }
+
+        async function toggleCategory(catId) {
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/categories/${catId}/toggle`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    currentCategories = result.data;
+                    renderCategories();
+                } else {
+                    toast('❌ ' + result.error, 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ: ' + e.message, 'error');
+            }
+        }
+
+        async function deleteCategory(catId) {
+            if (!confirm('هل أنت متأكد من حذف هذا التصنيف؟')) return;
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/categories/${catId}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) {
+                    currentCategories = result.data;
+                    renderCategories();
+                    toast('✅ تم الحذف', 'success');
+                } else {
+                    toast('❌ ' + result.error, 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ: ' + e.message, 'error');
+            }
+        }
+
+        async function editCategory(catId) {
+            const cat = currentCategories.find(c => c.id === catId);
+            if (!cat) return;
+            const newName = prompt('الاسم الجديد:', cat.name);
+            if (newName === null) return;
+            const newEmoji = prompt('الإيموجي الجديد:', cat.emoji);
+            if (newEmoji === null) return;
+            const newDesc = prompt('الوصف الجديد:', cat.description || '');
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/categories/${catId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName, emoji: newEmoji, description: newDesc })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    currentCategories = result.data;
+                    renderCategories();
+                    toast('✅ تم التحديث', 'success');
+                } else {
+                    toast('❌ ' + result.error, 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ: ' + e.message, 'error');
+            }
+        }
+
+        async function resetCategoriesToDefaults() {
+            if (!confirm('سيتم استبدال كل التصنيفات بالافتراضية (دعم فني، إدارة عليا، فعاليات، قروبات). متابعة؟')) return;
+            try {
+                const res = await fetch(`/api/guilds/${currentGuild.guildId}/categories/reset`, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    currentCategories = result.data;
+                    renderCategories();
+                    toast('✅ تم الاستعادة', 'success');
+                } else {
+                    toast('❌ ' + result.error, 'error');
+                }
+            } catch (e) {
+                toast('❌ خطأ: ' + e.message, 'error');
             }
         }
 

@@ -36,10 +36,14 @@ const guildSchema = new mongoose.Schema({
         }
     },
     ticketCategories: [{
-        name: String,
-        emoji: String,
+        id: { type: String, required: true },          // support, admin, event, groups
+        name: { type: String, required: true },        // دعم فني
+        emoji: { type: String, default: '🎫' },
         description: String,
+        requiredRoleId: { type: String, default: null }, // null = support role can see (default behavior)
+        adminOnly: { type: Boolean, default: false },    // if true, support cannot see
         enabled: { type: Boolean, default: true },
+        panelStyle: { type: String, enum: ['Primary', 'Secondary', 'Success', 'Danger'], default: 'Primary' },
         customFields: [{
             name: String,
             type: { type: String, enum: ['text', 'number', 'select'] },
