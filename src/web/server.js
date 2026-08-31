@@ -49,7 +49,6 @@ class WebServer {
         // Lightweight in-memory session for tracking non-essential state
         // User identity is now stored in a signed JWT cookie (more reliable on Render)
         this.app.use(session({
-            store: false
             secret: config.dashboard.sessionSecret,
             resave: false,
             saveUninitialized: false,
