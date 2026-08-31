@@ -64,7 +64,8 @@ async function handleTicketCreation(interaction, client, customId) {
                 emoji: found.emoji || '🎫',
                 label: found.name,
                 adminOnly: found.adminOnly || false,
-                requiredRoleId: found.requiredRoleId || null
+                requiredRoleId: found.requiredRoleId || null,
+                whoCanOpen: found.whoCanOpen || null
             };
         }
     }
@@ -105,15 +106,15 @@ async function handleTicketCreation(interaction, client, customId) {
 
     if (!category) return;
 
-    // Permission check: if category has whoCanOpen role, only that role can open
-    if (category.requiredRoleId) {
+    // Permission check: whoCanOpen — who can open this ticket type
+    if (category.whoCanOpen) {
         const member = interaction.guild.members.cache.get(interaction.user.id);
-        if (member && !member.roles.cache.has(category.requiredRoleId)) {
+        if (member && !member.roles.cache.has(category.whoCanOpen)) {
             return interaction.reply({
                 embeds: [
                     new EmbedBuilder()
                         .setColor(config.colors.danger)
-                        .setTitle('⛔ ليس لديك صلاحية')
+                        .setTitle('⛔ ليس لك صلاحية فتح هذا التكت')
                         .setDescription(`هذا النوع من التكتات مخصص لرتبة معينة فقط.`)
                 ],
                 ephemeral: true
