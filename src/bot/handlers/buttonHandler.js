@@ -105,6 +105,22 @@ async function handleTicketCreation(interaction, client, customId) {
 
     if (!category) return;
 
+    // Permission check: if category has whoCanOpen role, only that role can open
+    if (category.requiredRoleId) {
+        const member = interaction.guild.members.cache.get(interaction.user.id);
+        if (member && !member.roles.cache.has(category.requiredRoleId)) {
+            return interaction.reply({
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor(config.colors.danger)
+                        .setTitle('⛔ ليس لديك صلاحية')
+                        .setDescription(`هذا النوع من التكتات مخصص لرتبة معينة فقط.`)
+                ],
+                ephemeral: true
+            });
+        }
+    }
+
     // Check if user already has an open ticket
     const existingTicket = await Ticket.findOne({
         userId: interaction.user.id,

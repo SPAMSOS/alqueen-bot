@@ -1161,8 +1161,14 @@
                     </div>
 
                     <h3 style="margin: 20px 0 10px; font-size: 16px;">🎛️ أزرار التكت (حتى 5)</h3>
+                    <div style="background: rgba(88,101,242,0.08); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: var(--text-secondary);">
+                        💡 <strong>للأفضل:</strong> أضف التصنيفات من صفحة <strong>"🏷️ تصنيفات التكتات"</strong> ثم اضغط <strong>"🔄 مزامنة من التصنيفات"</strong> هنا.
+                    </div>
                     <div id="buttonsList"></div>
-                    <button type="button" class="btn btn-sm btn-primary" onclick="addButton()" style="margin-top: 8px;">➕ إضافة زر</button>
+                    <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="addButton()">➕ إضافة زر يدوي</button>
+                        <button type="button" class="btn btn-sm" onclick="syncButtonsFromCategories()" style="background: rgba(88,101,242,0.15); border: 1px solid var(--accent); color: var(--accent);">🔄 مزامنة من التصنيفات</button>
+                    </div>
 
                     <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                         <button type="submit" class="btn btn-primary">🔄 تحديث في ديسكورد</button>
@@ -1226,18 +1232,25 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">رتبة مطلوبة (اختياري)</label>
+                            <label class="form-label">رتبة تستلم التكت</label>
                             <select class="form-select" id="newCatRole">
                                 <option value="">-- الكل يستطيع فتحه --</option>
                             </select>
-                            <small style="color: var(--text-muted);">رتبة ديسكورد التي لها صلاحية رؤية التكتات من هذا النوع</small>
+                            <small style="color: var(--text-muted);">رتبة ديسكورد التي تستلم التكتات من هذا النوع</small>
                         </div>
-                        <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="newCatAdminOnly" style="width: 18px; height: 18px;">
-                            <label for="newCatAdminOnly" class="form-label" style="margin: 0; cursor: pointer;">
-                                🔒 إداري فقط (السبورت لا يراه)
-                            </label>
+                        <div class="form-group">
+                            <label class="form-label">رتبة تقدر تفتح التكت</label>
+                            <select class="form-select" id="newCatWhoCanOpen">
+                                <option value="">-- الكل يقدر يفتح --</option>
+                            </select>
+                            <small style="color: var(--text-muted);">إذا محددة، فقط هذه الرتبة تقدر تفتح تكت</small>
                         </div>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="newCatAdminOnly" style="width: 18px; height: 18px;">
+                        <label for="newCatAdminOnly" class="form-label" style="margin: 0; cursor: pointer;">
+                            🔒 إداري فقط (السبورت لا يراه)
+                        </label>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="addNewCategory()">➕ إضافة التصنيف</button>
                 </div>
@@ -1682,9 +1695,12 @@
                 const json = await res.json();
                 // Get server-level roles (top-level `roles` field, not per-member)
                 const roles = json.roles || [];
+                const options = '<option value="">-- الكل يستطيع فتحه --</option>' +
+                    roles.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
                 const sel = document.getElementById('newCatRole');
-                if (!sel) return;
-                sel.innerHTML = '<option value="">-- الكل يستطيع فتحه --</option>' +
+                const selOpen = document.getElementById('newCatWhoCanOpen');
+                if (sel) sel.innerHTML = options;
+                if (selOpen) selOpen.innerHTML = '<option value="">-- الكل يقدر يفتح --</option>' +
                     roles.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
             } catch (e) {
                 console.error('Populate roles:', e);
@@ -1722,7 +1738,8 @@
                             </div>
                             <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 4px;">
                                 <code>ticket_${escapeHtml(cat.id)}</code>
-                                ${cat.requiredRoleId ? ` • رتبة: <code>${escapeHtml(cat.requiredRoleId)}</code>` : ''}
+                                ${cat.requiredRoleId ? ` • تستلم: <code>${escapeHtml(cat.requiredRoleId)}</code>` : ' • تستلم: الكل'}
+                                ${cat.whoCanOpen ? ` • تفتح: <code>${escapeHtml(cat.whoCanOpen)}</code>` : ' • تفتح: الكل'}
                             </div>
                             ${cat.description ? `<p style="color: var(--text-secondary); font-size: 13px; margin: 4px 0 0;">${escapeHtml(cat.description)}</p>` : ''}
                         </div>
@@ -1743,6 +1760,7 @@
             const description = document.getElementById('newCatDesc').value.trim();
             const panelStyle = document.getElementById('newCatStyle').value;
             const requiredRoleId = document.getElementById('newCatRole').value || null;
+            const whoCanOpen = document.getElementById('newCatWhoCanOpen').value || null;
             const adminOnly = document.getElementById('newCatAdminOnly').checked;
 
             if (!id) { toast('⚠️ أدخل معرف إنجليزي (مثل: support, billing)', 'error'); return; }
@@ -1752,7 +1770,7 @@
                 const res = await fetch(`/api/guilds/${currentGuild.guildId}/categories`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, name, emoji, description, requiredRoleId, adminOnly, panelStyle, enabled: true })
+                    body: JSON.stringify({ id, name, emoji, description, requiredRoleId, whoCanOpen, adminOnly, panelStyle, enabled: true })
                 });
                 const result = await res.json();
                 if (result.success) {
@@ -1764,6 +1782,7 @@
                     document.getElementById('newCatEmoji').value = '';
                     document.getElementById('newCatDesc').value = '';
                     document.getElementById('newCatRole').value = '';
+                    document.getElementById('newCatWhoCanOpen').value = '';
                     document.getElementById('newCatAdminOnly').checked = false;
                     toast('✅ تم إضافة التصنيف', 'success');
                 } else {
@@ -2211,6 +2230,31 @@
             tempDiv.innerHTML = buildButtonRow({ id: `ticket_${Date.now().toString(36)}`, label: '', emoji: '🎫', style: 'Primary' }, current);
             const newRow = tempDiv.firstElementChild;
             list.appendChild(newRow);
+        }
+
+        async function syncButtonsFromCategories() {
+            if (!currentCategories || currentCategories.length === 0) {
+                toast('⚠️ لا توجد تصنيفات. أضفها من صفحة "تصنيفات التكتات" أولاً.', 'error');
+                return;
+            }
+            const enabled = currentCategories.filter(c => c.enabled);
+            if (enabled.length === 0) {
+                toast('⚠️ كل التصنيفات معطلة. فعّلها من صفحة التصنيفات.', 'error');
+                return;
+            }
+            if (enabled.length > 5) {
+                toast('⚠️ الحد الأقصى 5 أزرار. عطّل بعض التصنيفات.', 'error');
+                return;
+            }
+            const buttons = enabled.map(c => ({
+                id: `ticket_${c.id}`,
+                label: c.name,
+                emoji: c.emoji || '🎫',
+                style: c.panelStyle || 'Primary',
+                order: 0
+            }));
+            renderButtons(buttons);
+            toast(`✅ تم تحميل ${buttons.length} تصنيف كأزرار`, 'success');
         }
 
         function removeButton(idx) {

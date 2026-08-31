@@ -393,7 +393,7 @@ router.post('/guilds/:guildId/categories', async (req, res) => {
         if (!guild) {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
-        const { id, name, emoji, description, requiredRoleId, adminOnly, enabled, panelStyle } = req.body;
+        const { id, name, emoji, description, requiredRoleId, whoCanOpen, adminOnly, enabled, panelStyle } = req.body;
         if (!id || !name) {
             return res.status(400).json({ success: false, error: 'id and name are required' });
         }
@@ -406,6 +406,7 @@ router.post('/guilds/:guildId/categories', async (req, res) => {
             emoji: emoji || '🎫',
             description: description || '',
             requiredRoleId: requiredRoleId || null,
+            whoCanOpen: whoCanOpen || null,
             adminOnly: adminOnly || false,
             enabled: enabled !== false,
             panelStyle: panelStyle || 'Primary'
@@ -428,7 +429,7 @@ router.put('/guilds/:guildId/categories/:catId', async (req, res) => {
         if (!cat) {
             return res.status(404).json({ success: false, error: 'Category not found' });
         }
-        const allowed = ['name', 'emoji', 'description', 'requiredRoleId', 'adminOnly', 'enabled', 'panelStyle'];
+        const allowed = ['name', 'emoji', 'description', 'requiredRoleId', 'whoCanOpen', 'adminOnly', 'enabled', 'panelStyle'];
         for (const key of allowed) {
             if (req.body[key] !== undefined) cat[key] = req.body[key];
         }

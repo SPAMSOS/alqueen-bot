@@ -53,6 +53,8 @@ const config = {
             name: 'دعم فني',
             emoji: '🎫',
             description: 'للمساعدة في حل المشاكل التقنية',
+            requiredRoleId: null,
+            whoCanOpen: null,  // everyone
             adminOnly: false,
             enabled: true,
             panelStyle: 'Primary'
@@ -62,6 +64,8 @@ const config = {
             name: 'إدارة عليا',
             emoji: '👑',
             description: 'للشكاوى والطلبات الإدارية المهمة',
+            requiredRoleId: null,
+            whoCanOpen: null,  // everyone
             adminOnly: true,
             enabled: true,
             panelStyle: 'Danger'
@@ -71,6 +75,8 @@ const config = {
             name: 'فعاليات',
             emoji: '🎉',
             description: 'لتقديم طلبات الفعاليات والمسابقات',
+            requiredRoleId: null,
+            whoCanOpen: null,  // everyone
             adminOnly: true,
             enabled: true,
             panelStyle: 'Success'
@@ -80,6 +86,8 @@ const config = {
             name: 'قروبات',
             emoji: '🏆',
             description: 'للتقديم على إنشاء قروب أو الانضمام',
+            requiredRoleId: null,
+            whoCanOpen: null,  // everyone
             adminOnly: true,
             enabled: true,
             panelStyle: 'Secondary'

@@ -41,6 +41,7 @@ const guildSchema = new mongoose.Schema({
         emoji: { type: String, default: '🎫' },
         description: String,
         requiredRoleId: { type: String, default: null }, // null = support role can see (default behavior)
+        whoCanOpen: { type: String, default: null },     // null = everyone can open; else role ID
         adminOnly: { type: Boolean, default: false },    // if true, support cannot see
         enabled: { type: Boolean, default: true },
         panelStyle: { type: String, enum: ['Primary', 'Secondary', 'Success', 'Danger'], default: 'Primary' },
