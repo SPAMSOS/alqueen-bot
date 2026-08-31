@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField } = require('discord.js');
 const config = require('../../config/settings');
 const Guild = require('../../database/models/Guild');
-const { sendOrUpdatePanel, buildPanelEmbed, buildPanelButtons } = require('../utils/panelBuilder');
+const { sendOrUpdatePanel, buildPanelEmbed, buildPanelButtons, buildCategoryButtons } = require('../utils/panelBuilder');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -102,6 +102,7 @@ module.exports = {
             }
 
             // حفظ في قاعدة البيانات (background, no await)
+            // Use default ticket categories on first setup
             Guild.findOneAndUpdate(
                 { guildId: interaction.guild.id },
                 {
@@ -112,9 +113,12 @@ module.exports = {
                     'settings.transcriptChannelId': transcriptChannel.id,
                     'settings.logChannelId': logChannel.id,
                     'settings.panelChannelId': panelChannel.id,
-                    'settings.supportRoleId': supportRole?.id
+                    'settings.supportRoleId': supportRole?.id,
+                    $setOnInsert: {
+                        ticketCategories: config.defaultCategories
+                    }
                 },
-                { upsert: true, new: true, maxTimeMS: 5000 }
+                { upsert: true, new: true, maxTimeMS: 5000, setDefaultsOnInsert: true }
             ).catch(err => console.error('DB save error:', err.message));
 
             // Build panel from saved/custom settings (default for first setup)
@@ -126,7 +130,8 @@ module.exports = {
             };
 
             const panelEmbed = buildPanelEmbed(panelSettings, interaction.guild.name);
-            const panelRows = buildPanelButtons({});
+            // Use categories from config (default) for first setup
+            const panelRows = buildCategoryButtons(config.defaultCategories);
 
             const mentionRole = supportRole ? `<@&${supportRole.id}>` : '';
             const panelMessage = await panelChannel.send({

@@ -817,10 +817,14 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
 
         // Always send new message on sendNew, or if messageId is missing
         let result;
+        // Prefer categories from guild.ticketCategories (new system)
+        const categories = guild.ticketCategories && guild.ticketCategories.length > 0
+            ? guild.ticketCategories
+            : null;
         if (sendNew) {
-            const { buildPanelEmbed, buildPanelButtons } = require('../../bot/utils/panelBuilder');
+            const { buildPanelEmbed, buildPanelButtons, buildCategoryButtons } = require('../../bot/utils/panelBuilder');
             const embed = buildPanelEmbed(newPanelSettings, channel.guild.name);
-            const rows = buildPanelButtons(newPanelSettings);
+            const rows = categories ? buildCategoryButtons(categories) : buildPanelButtons(newPanelSettings);
             // Attach image file if Discord CDN URL — guarantees it shows in embed
             let files = null;
             if (newPanelSettings?.image) {
@@ -847,10 +851,16 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
             result = { message: msg, action: 'sent' };
         } else {
             // Update existing (or fallback to recent bot message with components)
-            result = await sendOrUpdatePanel(client, channel, {
-                ...newPanelSettings,
-                messageId: guild.panelMessageId
-            }, channel.guild.name);
+            result = await sendOrUpdatePanel(
+                client,
+                channel,
+                {
+                    ...newPanelSettings,
+                    messageId: guild.panelMessageId
+                },
+                channel.guild.name,
+                categories
+            );
         }
 
         // Save to DB

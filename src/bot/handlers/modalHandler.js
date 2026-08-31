@@ -226,9 +226,13 @@ ${description}
         // Mention: support role (for normal), or required role (for adminOnly)
         let mention = `${interaction.user}`;
         if (categoryData.adminOnly && categoryData.requiredRoleId) {
+            // Admin-only category: ping the specific required role
+            mention += ` | <@&${categoryData.requiredRoleId}>`;
+        } else if (categoryData.requiredRoleId) {
+            // Has a specific required role (not adminOnly): ping it
             mention += ` | <@&${categoryData.requiredRoleId}>`;
         } else if (guildData?.settings?.supportRoleId) {
-            // Find support role by ID
+            // No specific role: use server's default support role
             const supportRole = interaction.guild.roles.cache.get(guildData.settings.supportRoleId);
             if (supportRole) mention += ` | <@&${supportRole.id}>`;
         }
