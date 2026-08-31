@@ -447,7 +447,15 @@ router.delete('/guilds/:guildId/categories/:catId', async (req, res) => {
         if (!guild) {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
-        guild.ticketCategories = guild.ticketCategories.filter(c => c.id !== req.params.catId);
+        const catId = req.params.catId;
+        // Also remove the matching button from panelSettings.buttons
+        const matchingButtonId = `ticket_${catId}`;
+        if (guild.panelSettings?.buttons?.length) {
+            guild.panelSettings.buttons = guild.panelSettings.buttons.filter(
+                b => b.id !== matchingButtonId
+            );
+        }
+        guild.ticketCategories = guild.ticketCategories.filter(c => c.id !== catId);
         await guild.save();
         res.json({ success: true, data: guild.ticketCategories });
     } catch (error) {
@@ -818,14 +826,20 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
 
         // Always send new message on sendNew, or if messageId is missing
         let result;
-        // Prefer categories from guild.ticketCategories (new system)
-        const categories = guild.ticketCategories && guild.ticketCategories.length > 0
-            ? guild.ticketCategories
-            : null;
+        // Prefer buttons from panelSettings.buttons (managed in panel page).
+        // Only fall back to categories if no custom buttons exist.
+        const hasCustomButtons = newPanelSettings.buttons && newPanelSettings.buttons.length > 0;
         if (sendNew) {
             const { buildPanelEmbed, buildPanelButtons, buildCategoryButtons } = require('../../bot/utils/panelBuilder');
             const embed = buildPanelEmbed(newPanelSettings, channel.guild.name);
-            const rows = categories ? buildCategoryButtons(categories) : buildPanelButtons(newPanelSettings);
+            let rows;
+            if (hasCustomButtons) {
+                rows = buildPanelButtons(newPanelSettings);
+            } else if (guild.ticketCategories && guild.ticketCategories.length > 0) {
+                rows = buildCategoryButtons(guild.ticketCategories);
+            } else {
+                rows = buildPanelButtons(newPanelSettings);
+            }
             // Attach image file if Discord CDN URL — guarantees it shows in embed
             let files = null;
             if (newPanelSettings?.image) {
@@ -852,6 +866,7 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
             result = { message: msg, action: 'sent' };
         } else {
             // Update existing (or fallback to recent bot message with components)
+            // Pass null for categories so panelBuilder uses panelSettings.buttons
             result = await sendOrUpdatePanel(
                 client,
                 channel,
@@ -860,7 +875,7 @@ router.put('/guilds/:guildId/panel', async (req, res) => {
                     messageId: guild.panelMessageId
                 },
                 channel.guild.name,
-                categories
+                null  // always null - use panelSettings.buttons (managed in panel page)
             );
         }
 
